@@ -338,6 +338,42 @@
             animation: none;
         }
 
+        #giftImageModal {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, .94);
+        }
+
+        #giftImageModal[hidden] {
+            display: none;
+        }
+
+        #giftImageModal img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        #closeGiftImage {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 12px);
+            right: calc(env(safe-area-inset-right, 0px) + 12px);
+            width: 48px;
+            height: 48px;
+            padding: 0;
+            border-color: var(--ink);
+            background: var(--gold);
+            color: var(--ink);
+            font-size: 36px;
+            line-height: 1;
+            box-shadow: 0 4px 0 var(--gold-dark);
+        }
+
         @keyframes gift-wiggle {
 
             0%,
@@ -499,8 +535,8 @@
         <div id="stage">
             <canvas id="c" width="360" height="640"></canvas>
             <div id="overlay">
-                <button id="giftLinkBtn" type="button" aria-label="Mở liên kết quà tặng"
-                    title="Mở liên kết quà tặng">🎁</button>
+                <button id="giftLinkBtn" type="button" aria-label="Mở ảnh quà tặng" aria-haspopup="dialog"
+                    title="Mở ảnh quà tặng">🎁</button>
                 <button id="settingsBtn" type="button" aria-label="Cài đặt">⚙️</button>
                 <h1 id="gameTitle">🐤</h1>
                 <div id="deathMemeWrap">
@@ -577,6 +613,10 @@
             </div>
         </div>
     </div>
+    <div id="giftImageModal" role="dialog" aria-modal="true" aria-label="Ảnh quà tặng" hidden>
+        <img src="momo.webp" alt="Ảnh quà tặng">
+        <button id="closeGiftImage" type="button" aria-label="Đóng ảnh quà tặng" title="Đóng">×</button>
+    </div>
 
     <script>
         /* ============================================================
@@ -600,24 +640,27 @@
 
         const $ = id => document.getElementById(id);
         const AUTHOR_FACEBOOK_URL = "https://www.facebook.com/hw.khanh";
-        const GIFT_LINK_URL = "https://jonathanbassedas.github.io/halloween/";
-
         const giftLinkButton = $("giftLinkBtn");
-        let giftLink = null;
-        try {
-            const parsedGiftLink = new URL(GIFT_LINK_URL);
-            if (parsedGiftLink.protocol === "https:" || parsedGiftLink.protocol === "http:") {
-                giftLink = parsedGiftLink;
-            } else {
-                console.error("Link quà tặng phải dùng http:// hoặc https://");
-            }
-        } catch (error) {
-            console.error("Link quà tặng không hợp lệ", error);
-        }
-        giftLinkButton.disabled = !giftLink;
-        giftLinkButton.title = giftLink ? "Mở liên kết quà tặng" : "Link quà tặng không hợp lệ";
+        const giftImageModal = $("giftImageModal");
+        const closeGiftImageButton = $("closeGiftImage");
+        const closeGiftImage = () => {
+            giftImageModal.hidden = true;
+            giftImageModal.setAttribute("aria-hidden", "true");
+            giftLinkButton.focus();
+        };
         giftLinkButton.addEventListener("click", () => {
-            if (giftLink) window.open(giftLink.href, "_blank", "noopener,noreferrer");
+            giftImageModal.hidden = false;
+            giftImageModal.setAttribute("aria-hidden", "false");
+            closeGiftImageButton.focus();
+        });
+        closeGiftImageButton.addEventListener("click", closeGiftImage);
+        giftImageModal.addEventListener("click", event => {
+            if (event.target === giftImageModal) closeGiftImage();
+        });
+        window.addEventListener("keydown", event => {
+            if (event.key === "Escape" && !giftImageModal.hidden) {
+                closeGiftImage();
+            }
         });
 
         function renderAuthorFacebook() {
