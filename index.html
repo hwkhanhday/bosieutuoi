@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Chim Bay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #1b2a49;
+            --gold: #ffcd3c;
+            --gold-dark: #b3811a;
+            --panel: #233a6b;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            background: #10182b;
+            font-family: "VT323", "Courier New", monospace;
+            font-size: 20px;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        button,
+        input {
+            font-family: inherit;
+        }
+
+        #wrap {
+            position: relative;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #stage {
+            position: relative;
+            height: 100vh;
+            max-height: 100%;
+            aspect-ratio: 360 / 640;
+            max-width: 100vw;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: #8e86d8;
+        }
+
+        #overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(14, 20, 48, .78);
+            color: #fff;
+            text-align: center;
+        }
+
+        #overlay.hidden {
+            display: none;
+        }
+
+        h1 {
+            margin: 0 0 4px;
+            font-size: 54px;
+            line-height: 1;
+            letter-spacing: 2px;
+            font-weight: 400;
+            color: #ffd45c;
+            text-shadow: 3px 3px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink);
+        }
+
+        #deathMeme {
+            display: block;
+            max-width: 220px;
+            max-height: 110px;
+            margin-bottom: 4px;
+            object-fit: contain;
+        }
+
+        #deathMemeWrap {
+            display: none;
+            position: relative;
+            max-width: 220px;
+            max-height: 110px;
+        }
+
+        #deathMemeWrap img {
+            display: block;
+            max-width: 220px;
+            max-height: 110px;
+            object-fit: contain;
+        }
+
+        #deathMemeText {
+            position: absolute;
+            left: 50%;
+            bottom: 5px;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 30px;
+            font-weight: 900;
+            line-height: 1;
+            white-space: nowrap;
+            text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+        }
+
+        #highScoreImage {
+            display: none;
+            max-width: 220px;
+            max-height: 140px;
+            margin-bottom: 4px;
+            object-fit: contain;
+        }
+
+        #sub {
+            margin: 0 0 12px;
+            opacity: .9;
+            font-size: 22px;
+        }
+
+        #nameRow {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            max-width: 280px;
+        }
+
+        #birdPreview {
+            display: none;
+            width: 44px;
+            height: 44px;
+            border: 3px solid var(--ink);
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        input {
+            flex: 1;
+            min-width: 0;
+            padding: 8px 10px;
+            border: 3px solid var(--ink);
+            border-radius: 0;
+            background: #fff;
+            color: var(--ink);
+            font-size: 26px;
+            text-align: center;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--gold);
+        }
+
+        #name {
+            background: transparent;
+            color: #ffd45c;
+            border: 0;
+            box-shadow: none;
+            padding: 2px 8px 6px;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-shadow: 2px 2px 0 var(--ink);
+        }
+
+        #name::placeholder {
+            color: rgba(255, 255, 255, .7);
+            font-weight: 400;
+            text-shadow: none;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            padding: 0;
+            height: 24px;
+            border: 0;
+            background: transparent;
+            accent-color: var(--gold);
+        }
+
+        button {
+            padding: 8px 18px;
+            border: 3px solid var(--ink);
+            border-radius: 0;
+            font-size: 26px;
+            line-height: 1.1;
+            background: var(--gold);
+            color: var(--ink);
+            box-shadow: 0 4px 0 var(--gold-dark);
+            cursor: pointer;
+        }
+
+        button:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 var(--gold-dark);
+        }
+
+        #playBtn {
+            margin-top: 12px;
+            width: 100%;
+            max-width: 280px;
+            font-size: 32px;
+            padding: 10px;
+        }
+
+        #board {
+            margin-top: 16px;
+            width: 100%;
+            max-width: 280px;
+            background: var(--panel);
+            border: 3px solid var(--ink);
+            box-shadow: 4px 4px 0 var(--ink);
+            padding: 8px 10px;
+        }
+
+        #board h2 {
+            margin: 0 0 4px;
+            font-size: 24px;
+            font-weight: 400;
+            letter-spacing: 1px;
+            color: #ffd45c;
+        }
+
+        #board ol {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            max-height: 230px;
+            overflow: auto;
+            text-align: left;
+            font-size: 22px;
+            scrollbar-width: none;
+        }
+
+        #board ol::-webkit-scrollbar,
+        #settingsPanel::-webkit-scrollbar {
+            display: none;
+        }
+
+        #board li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 3px 2px;
+            border-bottom: 2px dashed rgba(255, 255, 255, .14);
+        }
+
+        #board li .avatar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 26px;
+            width: 26px;
+            height: 26px;
+            border: 2px solid var(--ink);
+            background: rgba(255, 205, 60, .3);
+            color: #ffd45c;
+            font-size: 18px;
+            object-fit: cover;
+        }
+
+        #board li .rk {
+            width: 24px;
+            opacity: .7;
+        }
+
+        #board li .nm {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #board li .sc {
+            color: #fff;
+        }
+
+        #board li.me {
+            color: #ffd45c;
+        }
+
+        #status {
+            font-size: 16px;
+            opacity: .75;
+            margin-top: 4px;
+            min-height: 16px;
+        }
+
+        #result {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        #result b {
+            font-size: 64px;
+            line-height: 1;
+            font-weight: 400;
+            display: block;
+            color: #ffd45c;
+            text-shadow: 3px 3px 0 var(--ink);
+        }
+
+        /* ----------------------- Cài đặt ----------------------- */
+        #giftLinkBtn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            font-size: 22px;
+            background: var(--panel);
+            color: #fff;
+            box-shadow: 0 4px 0 var(--ink);
+            animation: gift-wiggle 2s ease-in-out infinite;
+            transform-origin: 50% 15%;
+        }
+
+        #giftLinkBtn:disabled {
+            animation: none;
+        }
+
+        @keyframes gift-wiggle {
+
+            0%,
+            21%,
+            100% {
+                transform: rotate(0);
+            }
+
+            5% {
+                transform: rotate(-12deg);
+            }
+
+            9% {
+                transform: rotate(12deg);
+            }
+
+            13% {
+                transform: rotate(-8deg);
+            }
+
+            17% {
+                transform: rotate(6deg);
+            }
+        }
+
+        #settingsBtn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            font-size: 22px;
+            background: var(--panel);
+            color: #fff;
+            box-shadow: 0 4px 0 var(--ink);
+        }
+
+        #settingsPanel {
+            display: none;
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(12, 18, 42, .98);
+            overflow: auto;
+            scrollbar-width: none;
+            color: #fff;
+        }
+
+        #settingsPanel.open {
+            display: flex;
+        }
+
+        #settingsPanel h2 {
+            margin: 0 0 12px;
+            font-size: 36px;
+            font-weight: 400;
+            color: #ffd45c;
+            text-shadow: 3px 3px 0 var(--ink);
+        }
+
+        .setSec {
+            width: 100%;
+            max-width: 280px;
+            background: var(--panel);
+            border: 3px solid var(--ink);
+            box-shadow: 4px 4px 0 var(--ink);
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            text-align: left;
+        }
+
+        .setSec h3 {
+            margin: 0 0 8px;
+            font-size: 20px;
+            font-weight: 400;
+            letter-spacing: 1px;
+            color: #ffd45c;
+        }
+
+        .setRow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .setRow+.setRow {
+            margin-top: 10px;
+        }
+
+        #socialLinks {
+            margin-top: 6px;
+        }
+
+        #socialLinks a {
+            color: #ffd45c;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #socialLinks img {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .small {
+            padding: 6px 10px;
+            font-size: 20px;
+        }
+
+        .ghost {
+            background: #fff;
+            box-shadow: 0 4px 0 #9aa4bd;
+        }
+
+        .seg {
+            display: flex;
+            gap: 8px;
+        }
+
+        .seg button {
+            flex: 1;
+            padding: 6px 4px;
+            font-size: 20px;
+            background: #fff;
+            box-shadow: 0 4px 0 #9aa4bd;
+        }
+
+        .seg button.active {
+            background: var(--gold);
+            box-shadow: 0 4px 0 var(--gold-dark);
+        }
+
+        #setStatus {
+            font-size: 16px;
+            opacity: .8;
+            min-height: 16px;
+            margin-top: 6px;
+        }
+
+        #closeSettings {
+            width: 100%;
+            max-width: 280px;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="wrap">
+        <div id="stage">
+            <canvas id="c" width="360" height="640"></canvas>
+            <div id="overlay">
+                <button id="giftLinkBtn" type="button" aria-label="Mở liên kết quà tặng"
+                    title="Mở liên kết quà tặng">🎁</button>
+                <button id="settingsBtn" type="button" aria-label="Cài đặt">⚙️</button>
+                <h1 id="gameTitle">🐤</h1>
+                <div id="deathMemeWrap">
+                    <img id="deathMeme" src="catmeme.png" alt="Ảnh meme khi thua">
+                    <span id="deathMemeText">Gàaaaaa</span>
+                </div>
+                <img id="highScoreImage" src="viettiep.jpg" alt="Ảnh thưởng khi đạt từ 100 điểm">
+                <p id="sub">Chạm để tung cánh. Tránh ống nhé mấy cưng!</p>
+                <div id="result" style="display:none"></div>
+                <div id="nameRow"><input id="name" maxlength="14" placeholder="Nhập tên của mày" autocomplete="off">
+                </div>
+                <button id="playBtn">Chơi</button>
+                <div id="board">
+                    <h2>🏆 BẢNG XẾP HẠNG</h2>
+                    <ol id="list">
+                        <li>Đang tải...</li>
+                    </ol>
+                    <div id="status"></div>
+                </div>
+
+                <div id="settingsPanel">
+                    <h2>⚙️ Cài đặt</h2>
+
+                    <div class="setSec">
+                        <h3>ĐỔI TÊN</h3>
+                        <div id="nameNote" style="font-size:16px;opacity:.8;min-height:16px">Có thể đổi tên sau mỗi 24
+                            giờ.</div>
+                    </div>
+
+                    <div class="setSec">
+                        <h3>ÂM THANH</h3>
+                        <div class="setRow">
+                            <span>Tiếng trong game</span>
+                            <button id="soundToggle" class="small" type="button">🔊 Bật</button>
+                        </div>
+                        <div class="setRow">
+                            <span>🔈</span>
+                            <input id="volume" type="range" min="0" max="100" step="5" value="80" aria-label="Âm lượng">
+                            <span>🔊</span>
+                        </div>
+                        <div class="setRow">
+                            <span>Nhạc nền</span>
+                            <button id="musicToggle" class="small" type="button">🎵 Bật</button>
+                        </div>
+                    </div>
+
+                    <div class="setSec">
+                        <h3>ẢNH ĐẠI DIỆN</h3>
+                        <div class="setRow">
+                            <img id="birdPreview" alt="Ảnh đại diện hình tròn">
+                            <button id="birdImageButton" class="small" type="button">Chọn ảnh của bạn</button>
+                            <button id="birdRemoveButton" class="small ghost" type="button">Xóa ảnh</button>
+                            <input id="birdImageInput" type="file" accept="image/*" hidden>
+                        </div>
+                        <div id="setStatus"></div>
+                    </div>
+
+                    <div class="setSec">
+                        <h3>GIAO DIỆN</h3>
+                        <div class="seg">
+                            <button id="themeDay" type="button">☀️ Ban ngày</button>
+                            <button id="themeNight" type="button">🌙 Ban đêm</button>
+                        </div>
+                    </div>
+
+                    <div class="setSec">
+                        <h3>Nguồn</h3>
+                        <div style="font-size:16px;opacity:.8">DEV</div>
+                        <div id="socialLinks"></div>
+                    </div>
+
+                    <button id="closeSettings" type="button">Xong</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ============================================================
+           CẤU HÌNH BẢNG XẾP HẠNG CHUNG (Firebase Firestore)
+           - Để trống 2 dòng dưới: BXH chỉ lưu trên máy này (chơi thử).
+           - Điền vào: BXH chung cho cả nhóm bạn bè.
+           ============================================================ */
+        const FIREBASE_PROJECT_ID = "khanhnekk";
+        const FIREBASE_API_KEY = "AIzaSyALWXuYBHHnCRIV-bTl4oUCeRuoS4YE4nY";
+        const NAME_CHANGE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+        const NAME_CHANGE_TIME_KEY = "chimbay_name_changed_at";
+        const CUSTOM_FLAP_SOUND = "vocanh.mp3"; // e.g. "vot-canh.mp3"
+        const CUSTOM_SCORE_SOUND = "ting.mp3"; // e.g. "qua-cot.mp3"
+        const CUSTOM_DEATH_SOUND = "catmemesound.mp3"; // e.g. "khi-chet.mp3"
+        const CUSTOM_EXTRA_DEATH_SOUND = "chet.mp3";
+        const HIGH_SCORE_DEATH_SOUND = new Audio("siren head.mp3");
+        const BONUS_IMAGE_PATH = "chotiep.jpg";
+        const BACKGROUND_MUSIC_PATH = "ffob1.mp3";
+        const CLOUD_IMAGE_PATH = "chotiep.jpg";
+        const AVATAR_SIZE = 96; // Kích thước ảnh đại diện (px) khi lưu lên BXH
+
+        const $ = id => document.getElementById(id);
+        const AUTHOR_FACEBOOK_URL = "https://www.facebook.com/hw.khanh";
+        const GIFT_LINK_URL = "https://jonathanbassedas.github.io/halloween/";
+
+        const giftLinkButton = $("giftLinkBtn");
+        let giftLink = null;
+        try {
+            const parsedGiftLink = new URL(GIFT_LINK_URL);
+            if (parsedGiftLink.protocol === "https:" || parsedGiftLink.protocol === "http:") {
+                giftLink = parsedGiftLink;
+            } else {
+                console.error("Link quà tặng phải dùng http:// hoặc https://");
+            }
+        } catch (error) {
+            console.error("Link quà tặng không hợp lệ", error);
+        }
+        giftLinkButton.disabled = !giftLink;
+        giftLinkButton.title = giftLink ? "Mở liên kết quà tặng" : "Link quà tặng không hợp lệ";
+        giftLinkButton.addEventListener("click", () => {
+            if (giftLink) window.open(giftLink.href, "_blank", "noopener,noreferrer");
+        });
+
+        function renderAuthorFacebook() {
+            const container = $("socialLinks");
+            let url;
+            try {
+                url = new URL(AUTHOR_FACEBOOK_URL);
+            } catch (error) {
+                console.error("Link Facebook tác giả không hợp lệ", error);
+                container.textContent = "Link Facebook tác giả không hợp lệ.";
+                return;
+            }
+            if (url.protocol !== "https:" && url.protocol !== "http:") {
+                container.textContent = "Link Facebook tác giả phải dùng http:// hoặc https://.";
+                return;
+            }
+
+            const link = document.createElement("a");
+            link.href = url.href;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            const image = document.createElement("img");
+            image.src = "lhk.png";
+            image.alt = "";
+            image.alt = "Facebook tác giả";
+            link.appendChild(image);
+            container.appendChild(link);
+        }
+        renderAuthorFacebook();
+
+        /* -------------------- Cài đặt người chơi -------------------- */
+        const DEFAULT_SETTINGS = { sound: true, music: true, volume: 0.8, theme: "day" };
+        let settings = { ...DEFAULT_SETTINGS };
+        try {
+            Object.assign(settings, JSON.parse(localStorage.getItem("chimbay_settings") || "{}"));
+        } catch (e) { }
+        settings.sound = settings.sound !== false;
+        settings.music = settings.music !== false;
+        settings.volume = Math.min(1, Math.max(0, Number(settings.volume)));
+        if (Number.isNaN(settings.volume)) settings.volume = DEFAULT_SETTINGS.volume;
+        if (settings.theme !== "day" && settings.theme !== "night") settings.theme = "day";
+
+        function saveSettings() {
+            try { localStorage.setItem("chimbay_settings", JSON.stringify(settings)); } catch (e) { }
+        }
+
+        function soundOn() { return settings.sound && settings.volume > 0; }
+
+        function setMsg(text) { $("setStatus").textContent = text; }
+
+        function syncSettingsUI() {
+            $("soundToggle").textContent = settings.sound ? "🔊 Bật" : "🔇 Tắt";
+            $("musicToggle").textContent = settings.music ? "🎵 Bật" : "🔇 Tắt";
+            $("volume").value = Math.round(settings.volume * 100);
+            $("volume").disabled = !settings.sound;
+            $("themeDay").classList.toggle("active", settings.theme === "day");
+            $("themeNight").classList.toggle("active", settings.theme === "night");
+        }
+
+        /* ---------------------- Bảng xếp hạng ---------------------- */
+        const useCloud = !!(FIREBASE_PROJECT_ID && FIREBASE_API_KEY);
+        const FS = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
+
+        function dedupeTop(rows, n = 15) {
+            const best = new Map();
+            for (const r of rows) {
+                const k = r.name.trim().toLowerCase();
+                if (!best.has(k) || best.get(k).score < r.score) best.set(k, r);
+            }
+            return [...best.values()].sort((a, b) => b.score - a.score).slice(0, n);
+        }
+
+        async function getScores() {
+            if (!useCloud) {
+                let all = {};
+                try { all = JSON.parse(localStorage.getItem("chimbay_scores") || "{}"); } catch (e) { }
+                return dedupeTop(Object.entries(all).map(([name, score]) => ({ name, score })));
+            }
+            const res = await fetch(`${FS}:runQuery?key=${FIREBASE_API_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    structuredQuery: {
+                        from: [{ collectionId: "scores" }],
+                        orderBy: [{ field: { fieldPath: "score" }, direction: "DESCENDING" }],
+                        limit: 60
+                    }
+                })
+            });
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const data = await res.json();
+            const rows = data.filter(d => d.document).map(d => ({
+                name: d.document.fields.name.stringValue,
+                score: parseInt(d.document.fields.score.integerValue, 10)
+            }));
+            return dedupeTop(rows);
+        }
+
+        async function submitScore(name, score) {
+            if (!useCloud) {
+                let all = {};
+                try { all = JSON.parse(localStorage.getItem("chimbay_scores") || "{}"); } catch (e) { }
+                if (!all[name] || all[name] < score) all[name] = score;
+                try { localStorage.setItem("chimbay_scores", JSON.stringify(all)); } catch (e) { }
+                return;
+            }
+            const res = await fetch(`${FS}/scores?key=${FIREBASE_API_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    fields: {
+                        name: { stringValue: name },
+                        score: { integerValue: String(score) },
+                        t: { integerValue: String(Date.now()) }
+                    }
+                })
+            });
+            if (!res.ok) throw new Error("HTTP " + res.status);
+        }
+
+        async function renamePlayerScores(oldName, newName) {
+            if (!oldName || oldName === newName) return;
+            if (!useCloud) {
+                let all = {};
+                try { all = JSON.parse(localStorage.getItem("chimbay_scores") || "{}"); } catch (error) {
+                    console.error("Không đọc được BXH trên thiết bị", error);
+                    throw error;
+                }
+                if (Object.prototype.hasOwnProperty.call(all, oldName)) {
+                    all[newName] = Math.max(Number(all[newName]) || 0, Number(all[oldName]) || 0);
+                    delete all[oldName];
+                    try {
+                        localStorage.setItem("chimbay_scores", JSON.stringify(all));
+                    } catch (error) {
+                        console.error("Không lưu được BXH sau khi đổi tên", error);
+                        throw error;
+                    }
+                }
+                return;
+            }
+
+            const query = await fetch(`${FS}:runQuery?key=${FIREBASE_API_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    structuredQuery: {
+                        from: [{ collectionId: "scores" }],
+                        where: {
+                            fieldFilter: {
+                                field: { fieldPath: "name" },
+                                op: "EQUAL",
+                                value: { stringValue: oldName }
+                            }
+                        }
+                    }
+                })
+            });
+            if (!query.ok) throw new Error("Không tìm thấy điểm cũ: HTTP " + query.status);
+
+            const rows = await query.json();
+            const documents = rows.filter(row => row.document).map(row => row.document);
+            for (let offset = 0; offset < documents.length; offset += 500) {
+                const writes = documents.slice(offset, offset + 500).map(document => ({
+                    update: {
+                        name: document.name,
+                        fields: { name: { stringValue: newName } }
+                    },
+                    updateMask: { fieldPaths: ["name"] }
+                }));
+                const commit = await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents:commit?key=${FIREBASE_API_KEY}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ writes })
+                });
+                if (!commit.ok) throw new Error("Không cập nhật được điểm cũ: HTTP " + commit.status);
+            }
+        }
+
+        /* ------------- Ảnh đại diện (collection "players") ------------- */
+        // Mỗi người chơi có 1 document riêng, id = tên (viết thường) mã hóa hex,
+        // nên đổi ảnh là cập nhật ngay, không phụ thuộc vào điểm cao.
+        function playerId(name) {
+            return [...new TextEncoder().encode(name.trim().toLowerCase())]
+                .map(b => b.toString(16).padStart(2, "0")).join("");
+        }
+
+        async function upsertPlayer(name, avatar) {
+            if (!useCloud || !avatar) return;
+            const res = await fetch(`${FS}/players/${playerId(name)}?key=${FIREBASE_API_KEY}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    fields: {
+                        name: { stringValue: name },
+                        avatar: { stringValue: avatar },
+                        t: { integerValue: String(Date.now()) }
+                    }
+                })
+            });
+            if (!res.ok) throw new Error("HTTP " + res.status);
+        }
+
+        async function deletePlayer(name) {
+            if (!useCloud) return;
+            const res = await fetch(`${FS}/players/${playerId(name)}?key=${FIREBASE_API_KEY}`, { method: "DELETE" });
+            if (!res.ok) throw new Error("HTTP " + res.status);
+        }
+
+        async function getAvatars() {
+            if (!useCloud) return {};
+            try {
+                const res = await fetch(`${FS}/players?pageSize=300&key=${FIREBASE_API_KEY}`);
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                const data = await res.json();
+                const map = {};
+                (data.documents || []).forEach(d => {
+                    const f = d.fields || {};
+                    if (f.name && f.avatar) map[f.name.stringValue.trim().toLowerCase()] = f.avatar.stringValue;
+                });
+                return map;
+            } catch (e) {
+                console.error("Không tải được ảnh đại diện", e);
+                return {};
+            }
+        }
+
+        async function renderBoard(me) {
+            const list = $("list"), status = $("status");
+            status.textContent = useCloud ? "" : "Chế độ chơi thử: BXH chỉ lưu trên máy này";
+            try {
+                const [rows, avatars] = await Promise.all([getScores(), getAvatars()]);
+                if (!rows.length) { list.innerHTML = "<li>Chưa có ai. Hãy là người đầu tiên!</li>"; return; }
+                list.innerHTML = "";
+                rows.forEach((r, i) => {
+                    const li = document.createElement("li");
+                    const isMe = me && r.name.toLowerCase() === me.toLowerCase();
+                    if (isMe) li.className = "me";
+
+                    const rank = document.createElement("span");
+                    rank.className = "rk";
+                    rank.textContent = String(i + 1);
+
+                    let src = isMe ? birdImageData : avatars[r.name.trim().toLowerCase()];
+                    if (src && !src.startsWith("data:image/")) src = "";
+
+                    const avatar = document.createElement(src ? "img" : "span");
+                    avatar.className = "avatar";
+                    avatar.setAttribute("aria-hidden", "true");
+                    if (avatar.tagName === "IMG") {
+                        avatar.src = src;
+                        avatar.alt = "";
+                        avatar.addEventListener("error", () => {
+                            const fallback = document.createElement("span");
+                            fallback.className = "avatar";
+                            fallback.setAttribute("aria-hidden", "true");
+                            fallback.textContent = r.name.trim().charAt(0).toUpperCase() || "?";
+                            avatar.replaceWith(fallback);
+                        }, { once: true });
+                    } else {
+                        avatar.textContent = r.name.trim().charAt(0).toUpperCase() || "?";
+                    }
+
+                    const name = document.createElement("span");
+                    name.className = "nm";
+                    name.textContent = r.name;
+
+                    const score = document.createElement("span");
+                    score.className = "sc";
+                    score.textContent = String(r.score);
+
+                    li.append(rank, avatar, name, score);
+                    list.appendChild(li);
+                });
+            } catch (e) {
+                list.innerHTML = "<li>Không tải được BXH</li>";
+                status.textContent = "Kiểm tra lại cấu hình Firebase / quy tắc Firestore";
+            }
+        }
+
+        /* --------------------------- Game --------------------------- */
+        const cv = $("c"), ctx = cv.getContext("2d");
+        const W = 360, H = 640, GROUND = 90;
+        const GRAVITY = 1500, FLAP = -430, SPEED = 140, GAP = 160, PIPE_W = 62, SPAWN = 1.55;
+        const customSounds = {
+            flap: CUSTOM_FLAP_SOUND ? new Audio(CUSTOM_FLAP_SOUND) : null,
+            score: CUSTOM_SCORE_SOUND ? new Audio(CUSTOM_SCORE_SOUND) : null,
+            death: CUSTOM_DEATH_SOUND ? new Audio(CUSTOM_DEATH_SOUND) : null,
+            extraDeath: CUSTOM_EXTRA_DEATH_SOUND ? new Audio(CUSTOM_EXTRA_DEATH_SOUND) : null
+        };
+
+        /* Canvas độ phân giải cao để nét trên mọi màn hình */
+        let S = 1;
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            S = Math.min(3, Math.max(1, (cv.clientHeight * dpr) / H));
+            cv.width = Math.round(W * S);
+            cv.height = Math.round(H * S);
+        }
+        resizeCanvas();
+        window.addEventListener("resize", resizeCanvas);
+        if (document.fonts && document.fonts.load) document.fonts.load("40px VT323").catch(() => { });
+
+        const THEMES = {
+            day: {
+                bands: ["#7f7fd5", "#9684d8", "#ad8ad8", "#c691d4", "#de9ccd", "#f2a9c0", "#ffb9b2", "#ffcdaa", "#ffe0b0"],
+                mountFar: "#a88ad4", mountNear: "#8a74bf",
+                cloud: "rgba(255,255,255,.8)", cloudTint: "rgba(255,255,255,.12)", stars: false
+            },
+            night: {
+                bands: ["#070b1f", "#0b1330", "#101a40", "#16224f", "#1c2c5c", "#24386b", "#2d4478", "#365285", "#3f5f90"],
+                mountFar: "#1e2c58", mountNear: "#16214a",
+                cloud: "rgba(170,185,230,.45)", cloudTint: "rgba(10,20,50,.35)", stars: true
+            }
+        };
+        const STARS = Array.from({ length: 45 }, (_, i) => ({
+            x: ((i * 97) % (W / 4 | 0)) * 4,
+            y: (((i * 53) % ((H - GROUND - 80) / 4 | 0)) * 4) + 8,
+            r: (i % 3 === 0) ? 4 : 2,
+            p: i * 1.7
+        }));
+
+        /* Nhân vật chim pixel (thiết kế riêng) */
+        const BIRD_ROWS = [
+            "...oooooo....",
+            "..obbbbbbo...",
+            ".obbbbbwwwo..",
+            "obbbbbbwkwo..",
+            "obbbbbbbbboyy",
+            "obbbbbbbbboyy",
+            "obbbbbbbbbo..",
+            ".owwwwwwwwo..",
+            "..owwwwwwo...",
+            "...oooooo...."
+        ];
+        const BIRD_PAL = { o: "#1b2a49", b: "#46b3ff", d: "#2a74d6", w: "#ffffff", k: "#1b2a49", y: "#ffb703" };
+
+        function drawSprite(rows, pal, ox, oy, u) {
+            for (let r = 0; r < rows.length; r++) {
+                for (let c = 0; c < rows[r].length; c++) {
+                    const ch = rows[r][c];
+                    if (ch === ".") continue;
+                    ctx.fillStyle = pal[ch];
+                    ctx.fillRect(ox + c * u, oy + r * u, u + 0.4, u + 0.4);
+                }
+            }
+        }
+
+        let state = "menu";            // menu | ready | play | over
+        let bird, pipes, score, spawnT, deadT, playerName = "";
+        let scrollX = 0;
+        let birdImage = null, birdImageData = "";
+        let cloudImage = null;
+        let bonusImage = null;
+        let cloudsX = [40, 190, 300];
+        let gameAudio = null;
+        let bonusPopups = [];
+        let groundImagePasses = [];
+        const backgroundMusic = new Audio(BACKGROUND_MUSIC_PATH);
+        backgroundMusic.loop = true;
+        backgroundMusic.volume = 0.35;
+
+        function startBackgroundMusic() {
+            if (!settings.music || !backgroundMusic.paused) return;
+            backgroundMusic.play().catch(error => {
+                console.error("Không thể phát nhạc nền", error);
+                setMsg("Không phát được nhạc nền. Kiểm tra file " + BACKGROUND_MUSIC_PATH);
+            });
+        }
+
+        function stopBackgroundMusic() {
+            backgroundMusic.pause();
+        }
+
+        if (CLOUD_IMAGE_PATH) {
+            const image = new Image();
+            image.onload = () => { cloudImage = image; };
+            image.onerror = () => console.error(`Không thể tải ảnh mây: ${CLOUD_IMAGE_PATH}`);
+            image.src = CLOUD_IMAGE_PATH;
+        }
+        if (BONUS_IMAGE_PATH) {
+            const image = new Image();
+            image.onload = () => { bonusImage = image; };
+            image.onerror = () => console.error(`Không thể tải ảnh thưởng: ${BONUS_IMAGE_PATH}`);
+            image.src = BONUS_IMAGE_PATH;
+        }
+
+        function playCustomSound(sound, name) {
+            if (!sound) return false;
+            if (!soundOn()) return true;
+            const playback = sound.cloneNode();
+            playback.volume = settings.volume;
+            playback.play().catch(error => {
+                console.error(`Không thể phát âm thanh ${name}`, error);
+                $("status").textContent = `Không phát được âm thanh ${name}`;
+            });
+            return true;
+        }
+
+        function getGameAudio() {
+            if (gameAudio) return gameAudio;
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) {
+                console.error("Trình duyệt không hỗ trợ Web Audio");
+                return null;
+            }
+            try {
+                gameAudio = new AudioContextClass();
+                return gameAudio;
+            } catch (error) {
+                console.error("Không thể khởi tạo âm thanh", error);
+                return null;
+            }
+        }
+
+        function playTone(startFrequency, endFrequency, duration, volume, type = "sine") {
+            if (!soundOn()) return;
+            const audio = getGameAudio();
+            if (!audio) return;
+            if (audio.state === "suspended") {
+                audio.resume().catch(error => console.error("Không thể bật âm thanh", error));
+            }
+
+            const level = Math.max(0.0001, volume * settings.volume);
+            const now = audio.currentTime;
+            const oscillator = audio.createOscillator();
+            const gain = audio.createGain();
+            oscillator.type = type;
+            oscillator.frequency.setValueAtTime(startFrequency, now);
+            oscillator.frequency.exponentialRampToValueAtTime(endFrequency, now + duration);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(level, now + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+            oscillator.connect(gain);
+            gain.connect(audio.destination);
+            oscillator.start(now);
+            oscillator.stop(now + duration + 0.02);
+        }
+
+        function playFlapSound() {
+            if (playCustomSound(customSounds.flap, "vỗ cánh")) return;
+            playTone(420, 760, 0.1, 0.04, "triangle");
+        }
+
+        function playScoreSound() {
+            if (playCustomSound(customSounds.score, "qua cột")) return;
+            playTone(880, 1320, 0.14, 0.05);
+        }
+
+        function playDeathSound() {
+            const playedDeathSound = playCustomSound(customSounds.death, "khi chết");
+            const playedExtraDeathSound = playCustomSound(customSounds.extraDeath, "khi chết");
+            if (playedDeathSound || playedExtraDeathSound) return;
+            playTone(360, 90, 0.45, 0.06, "triangle");
+            playTone(180, 55, 0.35, 0.04);
+        }
+
+        function playHighScoreDeathSound() {
+            if (!soundOn()) return;
+            const playback = HIGH_SCORE_DEATH_SOUND.cloneNode();
+            playback.volume = settings.volume;
+            playback.play().catch(error => {
+                console.error("Không thể phát âm thanh mốc 100 điểm", error);
+                $("status").textContent = "Không phát được âm thanh mốc 100 điểm";
+            });
+        }
+
+        function showBonusEffect() {
+            const x = Math.min(W - 38, Math.max(30, bird.x + 32));
+            const y = Math.max(70, bird.y - 14);
+            bonusPopups.push({ x, y, age: 0, ttl: 1.2, size: 58 });
+        }
+
+        try { playerName = localStorage.getItem("chimbay_name") || ""; } catch (e) { }
+        $("name").value = playerName;
+
+        function setBirdImage(dataUrl) {
+            birdImageData = dataUrl;
+            const image = new Image();
+            image.onload = () => {
+                birdImage = image;
+                $("birdPreview").src = dataUrl;
+                $("birdPreview").style.display = "block";
+                renderBoard(playerName);
+            };
+            image.onerror = () => {
+                console.error("Không thể tải ảnh đại diện");
+                setMsg("Không thể tải ảnh đại diện");
+            };
+            image.src = dataUrl;
+        }
+
+        try {
+            const savedBirdImage = localStorage.getItem("chimbay_bird_image");
+            if (savedBirdImage) setBirdImage(savedBirdImage);
+        } catch (error) {
+            console.error("Không thể đọc ảnh đại diện đã lưu", error);
+        }
+
+        $("birdImageButton").addEventListener("click", () => $("birdImageInput").click());
+        $("birdImageInput").addEventListener("change", event => {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith("image/")) {
+                setMsg("Vui lòng chọn một tệp hình ảnh");
+                event.target.value = "";
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                setMsg("Ảnh quá lớn, hãy chọn ảnh dưới 10 MB");
+                event.target.value = "";
+                return;
+            }
+
+            const imageUrl = URL.createObjectURL(file);
+            const image = new Image();
+            image.onload = () => {
+                URL.revokeObjectURL(imageUrl);
+                // Cắt vuông ở giữa rồi thu nhỏ còn AVATAR_SIZE x AVATAR_SIZE
+                const side = Math.min(image.naturalWidth, image.naturalHeight);
+                const sx = (image.naturalWidth - side) / 2;
+                const sy = (image.naturalHeight - side) / 2;
+                const canvas = document.createElement("canvas");
+                canvas.width = AVATAR_SIZE;
+                canvas.height = AVATAR_SIZE;
+                canvas.getContext("2d").drawImage(image, sx, sy, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+                const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+                setBirdImage(dataUrl);
+                try {
+                    localStorage.setItem("chimbay_bird_image", dataUrl);
+                    setMsg(useCloud
+                        ? "Đã chọn ảnh. Ảnh sẽ hiện trên BXH khi bạn bấm Chơi"
+                        : "Ảnh đại diện đã lưu trên thiết bị này");
+                } catch (error) {
+                    console.error("Không thể lưu ảnh đại diện", error);
+                    setMsg("Không đủ bộ nhớ để lưu ảnh trên thiết bị");
+                }
+                event.target.value = "";
+            };
+            image.onerror = () => {
+                URL.revokeObjectURL(imageUrl);
+                console.error("Không thể đọc ảnh đã chọn");
+                setMsg("Không thể mở ảnh đã chọn");
+                event.target.value = "";
+            };
+            image.src = imageUrl;
+        });
+
+        $("birdRemoveButton").addEventListener("click", () => {
+            if (!birdImageData) { setMsg("Bạn chưa chọn ảnh nào"); return; }
+            birdImage = null;
+            birdImageData = "";
+            $("birdPreview").style.display = "none";
+            try { localStorage.removeItem("chimbay_bird_image"); } catch (e) { }
+            if (useCloud && playerName) {
+                deletePlayer(playerName)
+                    .then(() => { setMsg("Đã xóa ảnh"); renderBoard(playerName); })
+                    .catch(error => {
+                        console.error("Không xóa được ảnh trên BXH", error);
+                        setMsg("Đã xóa trên máy này, nhưng chưa xóa được trên BXH");
+                    });
+            } else {
+                setMsg("Đã xóa ảnh");
+            }
+            renderBoard(playerName);
+        });
+
+        /* ------------------- Điều khiển cài đặt ------------------- */
+        $("settingsBtn").addEventListener("click", () => {
+            syncSettingsUI();
+            setMsg("");
+            $("settingsPanel").classList.add("open");
+        });
+        $("closeSettings").addEventListener("click", () => $("settingsPanel").classList.remove("open"));
+
+        $("soundToggle").addEventListener("click", () => {
+            settings.sound = !settings.sound;
+            saveSettings();
+            syncSettingsUI();
+            if (settings.sound) playFlapSound();
+        });
+        $("musicToggle").addEventListener("click", () => {
+            settings.music = !settings.music;
+            saveSettings();
+            syncSettingsUI();
+            if (settings.music) startBackgroundMusic();
+            else stopBackgroundMusic();
+        });
+        $("volume").addEventListener("input", e => {
+            settings.volume = Number(e.target.value) / 100;
+            saveSettings();
+        });
+        $("volume").addEventListener("change", () => playFlapSound());
+
+        $("themeDay").addEventListener("click", () => { settings.theme = "day"; saveSettings(); syncSettingsUI(); });
+        $("themeNight").addEventListener("click", () => { settings.theme = "night"; saveSettings(); syncSettingsUI(); });
+        syncSettingsUI();
+
+        function getNameChangeRemainingMs() {
+            let changedAt = 0;
+            try {
+                changedAt = Number(localStorage.getItem(NAME_CHANGE_TIME_KEY)) || 0;
+            } catch (error) {
+                console.error("Không đọc được thời gian đổi tên", error);
+            }
+            return Math.max(0, changedAt + NAME_CHANGE_COOLDOWN_MS - Date.now());
+        }
+
+        function syncNameEditUI() {
+            const inp = $("name");
+            const remainingMs = getNameChangeRemainingMs();
+            inp.disabled = remainingMs > 0;
+            inp.style.background = "transparent";
+            inp.style.color = "#ffd45c";
+            if (remainingMs > 0) {
+                const totalSeconds = Math.ceil(remainingMs / 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                $("nameNote").textContent = `Có thể đổi tên sau ${hours} giờ ${minutes} phút ${seconds} giây.`;
+            } else {
+                $("nameNote").textContent = "Có thể đổi tên. Sau khi đổi, cần chờ 24 giờ để đổi tiếp.";
+            }
+        }
+        syncNameEditUI();
+        setInterval(syncNameEditUI, 1000);
+
+        function reset() {
+            bird = { x: 90, y: H / 2 - 40, vy: 0, rot: 0, flapT: 0 };
+            pipes = []; score = 0; spawnT = 0.9; deadT = 0;
+            bonusPopups = [];
+            groundImagePasses = [];
+        }
+        reset();
+
+        function flap() {
+            if (state === "ready") { state = "play"; }
+            if (state === "play") {
+                bird.vy = FLAP;
+                bird.flapT = 0.15;
+                playFlapSound();
+            }
+        }
+
+        function addPipe() {
+            const min = 90, max = H - GROUND - GAP - 90;
+            pipes.push({ x: W + 10, top: min + Math.random() * (max - min), passed: false });
+        }
+
+        function die() {
+            if (state !== "play") return;
+            state = "over"; deadT = 0;
+            const finalScore = score;
+            playDeathSound();
+            if (finalScore >= 0 && finalScore <= 50) {
+                showBonusEffect();
+            } else if (finalScore >= 100) {
+                playHighScoreDeathSound();
+            }
+            setTimeout(async () => {
+                showOverlay(true, finalScore);
+                if (finalScore > 0) {
+                    try { await submitScore(playerName, finalScore); } catch (e) { $("status").textContent = "Không gửi được điểm lên BXH"; }
+                }
+                renderBoard(playerName);
+            }, 700);
+        }
+
+        function update(dt) {
+            if (state !== "over") scrollX += SPEED * dt;
+            cloudsX = cloudsX.map(x => (x - 12 * dt < -70 ? W + 20 : x - 12 * dt));
+            bonusPopups = bonusPopups.filter(item => {
+                item.age += dt;
+                return item.age < item.ttl;
+            });
+            groundImagePasses = groundImagePasses.filter(item => {
+                item.x -= item.speed * dt;
+                return item.x > -item.size;
+            });
+
+            if (state === "ready") {
+                bird.y = H / 2 - 40 + Math.sin(performance.now() / 200) * 8;
+                bird.flapT = Math.max(0, Math.sin(performance.now() / 120)) * 0.1;
+                return;
+            }
+            if (state === "play" || state === "over") {
+                bird.vy += GRAVITY * dt;
+                bird.y += bird.vy * dt;
+                bird.rot = Math.max(-0.5, Math.min(1.3, bird.vy / 520));
+                bird.flapT = Math.max(0, bird.flapT - dt);
+            }
+            if (state === "play") {
+                spawnT -= dt;
+                if (spawnT <= 0) { addPipe(); spawnT = SPAWN; }
+                for (const p of pipes) {
+                    p.x -= SPEED * dt;
+                    if (!p.passed && p.x + PIPE_W < bird.x - 12) {
+                        p.passed = true;
+                        score++;
+                        playScoreSound();
+                        if (score === 10) {
+                            groundImagePasses.push({ x: W, size: 58, speed: 140 });
+                        }
+                    }
+                    const bx = bird.x, by = bird.y, r = 12;
+                    if (bx + r > p.x && bx - r < p.x + PIPE_W && (by - r < p.top || by + r > p.top + GAP)) die();
+                }
+                pipes = pipes.filter(p => p.x > -PIPE_W - 10);
+                if (bird.y + 12 >= H - GROUND) { bird.y = H - GROUND - 12; die(); }
+                if (bird.y < -20) bird.y = -20;
+            }
+            if (state === "over" && bird.y + 12 >= H - GROUND) { bird.y = H - GROUND - 12; bird.vy = 0; }
+        }
+
+        /* --------------------------- Vẽ --------------------------- */
+        function pixelDisc(cx, cy, r, color) {
+            ctx.fillStyle = color;
+            for (let dy = -r; dy < r; dy += 4) {
+                const hw = Math.round(Math.sqrt(r * r - (dy + 2) * (dy + 2)) / 4) * 4;
+                ctx.fillRect(cx - hw, cy + dy, hw * 2, 4);
+            }
+        }
+
+        function drawMountains(offset, base, amp, seed, color) {
+            const floor = H - GROUND;
+            ctx.fillStyle = color;
+            for (let x = 0; x < W; x += 8) {
+                const wx = x + offset;
+                const raw = base + Math.sin(wx * 0.011 + seed) * amp + Math.sin(wx * 0.027 + seed * 2) * amp * 0.4;
+                const h = Math.round(raw / 8) * 8;
+                ctx.fillRect(x, floor - h, 8, h);
+            }
+        }
+
+        function pixCloud(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x + 12, y, 28, 8);
+            ctx.fillRect(x, y + 8, 56, 8);
+            ctx.fillRect(x + 8, y + 16, 40, 4);
+        }
+
+        function drawCloud(x, y, theme) {
+            if (cloudImage && cloudImage.complete && cloudImage.naturalWidth) {
+                ctx.save();
+                ctx.globalCompositeOperation = "screen";
+                const scale = Math.min(72 / cloudImage.naturalWidth, 88 / cloudImage.naturalHeight);
+                const width = cloudImage.naturalWidth * scale;
+                const height = cloudImage.naturalHeight * scale;
+                ctx.drawImage(cloudImage, x + (56 - width) / 2, y - height / 2, width, height);
+                ctx.restore();
+            } else {
+                pixCloud(Math.round(x / 4) * 4, Math.round(y / 4) * 4, theme.cloud);
+            }
+        }
+
+        /* Ống tre */
+        const INK = "#1f5a2a";
+        function bambooBody(x, y, h) {
+            if (h <= 0) return;
+            ctx.fillStyle = "#7fd35a"; ctx.fillRect(x, y, PIPE_W, h);
+            ctx.fillStyle = "#4aa83f"; ctx.fillRect(x, y, 10, h); ctx.fillRect(x + PIPE_W - 8, y, 8, h);
+            ctx.fillStyle = "#b9f08e"; ctx.fillRect(x + 16, y, 6, h);
+            ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.strokeRect(x, y, PIPE_W, h);
+        }
+        function bambooNode(x, y, w, h) {
+            ctx.fillStyle = "#5cc24a"; ctx.fillRect(x, y, w, h);
+            ctx.fillStyle = "#a6e57d"; ctx.fillRect(x + 3, y + 3, w - 6, 3);
+            ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.strokeRect(x, y, w, h);
+        }
+
+        function drawPipe(p) {
+            const bottomY = p.top + GAP, capH = 24, ext = 5;
+            // ống trên
+            bambooBody(p.x, -4, p.top - capH + 4);
+            for (let ny = p.top - capH - 72; ny > -10; ny -= 72) bambooNode(p.x - 3, ny, PIPE_W + 6, 10);
+            bambooNode(p.x - ext, p.top - capH, PIPE_W + ext * 2, capH);
+            // ống dưới
+            bambooBody(p.x, bottomY + capH, H);
+            for (let ny = bottomY + capH + 62; ny < H; ny += 72) bambooNode(p.x - 3, ny, PIPE_W + 6, 10);
+            bambooNode(p.x - ext, bottomY, PIPE_W + ext * 2, capH);
+        }
+
+        function drawBird() {
+            ctx.save();
+            ctx.translate(bird.x, bird.y);
+            ctx.rotate(bird.rot);
+            if (birdImage) {
+                ctx.beginPath();
+                ctx.arc(0, 0, 17, 0, Math.PI * 2);
+                ctx.clip();
+                ctx.drawImage(birdImage, -17, -17, 34, 34);
+                ctx.restore();
+                ctx.beginPath();
+                ctx.arc(bird.x, bird.y, 17, 0, Math.PI * 2);
+                ctx.strokeStyle = "#1b2a49";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                return;
+            }
+            const u = 3, ox = -19.5, oy = -15;
+            drawSprite(BIRD_ROWS, BIRD_PAL, ox, oy, u);
+            // cánh (2x2 ô) đổi vị trí khi vỗ
+            const wy = bird.flapT > 0 ? 2 : 4;
+            ctx.fillStyle = BIRD_PAL.d;
+            ctx.fillRect(ox + 3 * u, oy + wy * u, 2 * u, 2 * u);
+            ctx.restore();
+        }
+
+        function draw() {
+            ctx.setTransform(S, 0, 0, S, 0, 0);
+            const theme = THEMES[settings.theme] || THEMES.day;
+            const skyH = H - GROUND;
+
+            // trời: các dải màu
+            const bandH = Math.ceil(skyH / theme.bands.length);
+            theme.bands.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(0, i * bandH, W, bandH + 1); });
+
+            // sao (ban đêm)
+            if (theme.stars) {
+                const t = performance.now() / 700;
+                ctx.fillStyle = "#fff";
+                for (const s of STARS) {
+                    ctx.globalAlpha = 0.45 + 0.55 * Math.sin(t + s.p);
+                    ctx.fillRect(s.x, s.y, s.r, s.r);
+                }
+                ctx.globalAlpha = 1;
+            }
+
+            // mặt trời / mặt trăng
+            if (theme.stars) {
+                pixelDisc(272, 140, 34, "#eef0e6");
+                ctx.fillStyle = "#d3d6c8";
+                ctx.fillRect(260, 128, 8, 8); ctx.fillRect(282, 150, 8, 8); ctx.fillRect(264, 154, 4, 4);
+            } else {
+                pixelDisc(272, 150, 48, "#ffe3a8");
+                pixelDisc(272, 150, 36, "#fff4cf");
+            }
+
+            // núi xa, núi gần (cuộn chậm)
+            drawMountains(scrollX * 0.12, 120, 34, 1.3, theme.mountFar);
+            drawMountains(scrollX * 0.3, 64, 26, 4.1, theme.mountNear);
+
+            // mây
+            drawCloud(cloudsX[0], 110, theme); drawCloud(cloudsX[1], 200, theme); drawCloud(cloudsX[2], 70, theme);
+
+            pipes.forEach(drawPipe);
+
+            // đất: cỏ + đất nâu họa tiết ô vuông
+            const gy = H - GROUND;
+            ctx.fillStyle = "#b5733e"; ctx.fillRect(0, gy, W, GROUND);
+            ctx.fillStyle = "#a2652f";
+            const colShift = Math.floor(scrollX / 16), px = scrollX % 16;
+            for (let c = 0; c < W / 16 + 2; c++) {
+                for (let r = 0; r < 4; r++) {
+                    if ((c + colShift + r) % 2 === 0) ctx.fillRect(c * 16 - px, gy + 20 + r * 16, 16, 16);
+                }
+            }
+            ctx.fillStyle = "#6cc24a"; ctx.fillRect(0, gy, W, 14);
+            ctx.fillStyle = "#4ca03a";
+            for (let c = 0; c < W / 16 + 2; c++) ctx.fillRect(c * 16 - px, gy + 14, 8, 6);
+            ctx.fillStyle = "#2f6b2a"; ctx.fillRect(0, gy, W, 3);
+
+            if (settings.theme === "night") {
+                ctx.fillStyle = "rgba(10,20,50,.4)";
+                ctx.fillRect(0, gy, W, GROUND);
+            }
+
+            if (bonusImage && bonusImage.complete && bonusImage.naturalWidth) {
+                for (const item of groundImagePasses) {
+                    const y = gy + (GROUND - item.size) / 2;
+                    ctx.drawImage(bonusImage, item.x, y, item.size, item.size);
+                }
+            }
+
+            drawBird();
+
+            if (state === "play" || state === "over") {
+                ctx.font = "72px VT323, monospace"; ctx.textAlign = "center";
+                ctx.lineJoin = "round";
+                ctx.lineWidth = 8; ctx.strokeStyle = "#1b2a49"; ctx.strokeText(score, W / 2, 100);
+                ctx.fillStyle = "#fff"; ctx.fillText(score, W / 2, 100);
+            }
+            for (const item of bonusPopups) {
+                const alpha = 1 - item.age / item.ttl;
+                if (alpha <= 0) continue;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                const size = item.size * (1 + (1 - alpha) * 0.2);
+                if (bonusImage && bonusImage.complete && bonusImage.naturalWidth) {
+                    ctx.drawImage(bonusImage, item.x - size / 2, item.y - size / 2, size, size);
+                } else {
+                    ctx.fillStyle = "rgba(255,255,255,.85)";
+                    ctx.fillRect(item.x - size / 2, item.y - size / 2, size, size);
+                    ctx.fillStyle = "#1b2a49";
+                    ctx.font = "bold 24px VT323, monospace";
+                    ctx.textAlign = "center";
+                    ctx.fillText("+", item.x, item.y + 8);
+                }
+                ctx.restore();
+            }
+            if (state === "ready") {
+                const txt = "Chạm để bắt đầu";
+                ctx.globalAlpha = Math.floor(performance.now() / 500) % 2 ? 1 : 0.45;
+                ctx.font = "34px VT323, monospace"; ctx.textAlign = "center";
+                ctx.lineJoin = "round";
+                ctx.lineWidth = 6; ctx.strokeStyle = "#1b2a49";
+                ctx.strokeText(txt, W / 2, 230); ctx.fillStyle = "#fff"; ctx.fillText(txt, W / 2, 230);
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        let last = performance.now();
+        function loop(now) {
+            const dt = Math.min(0.033, (now - last) / 1000); last = now;
+            update(dt); draw();
+            requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
+
+        /* ------------------------ Điều khiển ------------------------ */
+        function showOverlay(over, finalScore) {
+            $("overlay").classList.remove("hidden");
+            const showDeathMeme = over && finalScore >= 1 && finalScore <= 9;
+            const showHighScoreImage = over && finalScore >= 100;
+            $("gameTitle").style.display = showDeathMeme || showHighScoreImage ? "none" : "";
+            $("deathMemeWrap").style.display = showDeathMeme ? "block" : "none";
+            $("highScoreImage").style.display = showHighScoreImage ? "block" : "none";
+            const res = $("result");
+            if (over) {
+                res.style.display = "block";
+                res.innerHTML = `Điểm của bạn<b>${finalScore}</b>`;
+                $("playBtn").textContent = "Chơi lại";
+                $("sub").style.display = "none";
+            } else {
+                res.style.display = "none";
+            }
+        }
+
+        let startingGame = false;
+        async function startGame() {
+            if (startingGame) return;
+            const n = $("name").value.trim();
+            if (!n) { $("name").focus(); $("name").style.outline = "3px solid #ff5a5a"; return; }
+            const nameChanged = n !== playerName;
+            if (nameChanged && getNameChangeRemainingMs() > 0) {
+                syncNameEditUI();
+                return;
+            }
+            startingGame = true;
+            $("playBtn").disabled = true;
+            try {
+                if (nameChanged && playerName) await renamePlayerScores(playerName, n);
+                if (nameChanged) {
+                    const changedAt = Date.now();
+                    localStorage.setItem(NAME_CHANGE_TIME_KEY, String(changedAt));
+                    localStorage.setItem("chimbay_name", n);
+                }
+            } catch (error) {
+                console.error("Không cập nhật được BXH khi đổi tên", error);
+                $("status").textContent = "Không đổi được tên trên BXH. Vui lòng thử lại.";
+                return;
+            } finally {
+                startingGame = false;
+                $("playBtn").disabled = false;
+            }
+            startBackgroundMusic();
+            $("name").style.outline = "";
+            playerName = n;
+            syncNameEditUI();
+            // Đồng bộ ảnh đại diện lên Firebase để người khác thấy trên BXH
+            upsertPlayer(n, birdImageData).catch(error => {
+                console.error("Không gửi được ảnh đại diện", error);
+                $("status").textContent = "Không gửi được ảnh đại diện lên BXH";
+            });
+            reset();
+            state = "ready";
+            $("overlay").classList.add("hidden");
+        }
+
+        $("playBtn").addEventListener("click", startGame);
+        $("name").addEventListener("keydown", e => { if (e.key === "Enter") startGame(); });
+
+        const press = e => { if (state === "ready" || state === "play") { e.preventDefault(); flap(); } };
+        cv.addEventListener("pointerdown", press);
+        window.addEventListener("keydown", e => {
+            if (e.code === "Space" && document.activeElement !== $("name")) {
+                if (state === "ready" || state === "play") { e.preventDefault(); flap(); }
+            }
+        });
+
+        renderBoard(playerName);
+    </script>
+</body>
+
+</html>
