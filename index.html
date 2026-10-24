@@ -79,11 +79,11 @@
 
         h1 {
             margin: 0 0 4px;
-            font-size: 54px;
+            font-size: 64px;
             line-height: 1;
             letter-spacing: 2px;
             font-weight: 400;
-            color: #ffd45c;
+            color: #ff4b4b;
             text-shadow: 3px 3px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink);
         }
 
@@ -305,15 +305,25 @@
         }
 
         #result {
+            width: 100%;
+            max-width: 280px;
             font-size: 24px;
             margin-bottom: 10px;
         }
 
+        .scoreRow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 2px 8px;
+            border-bottom: 2px dashed rgba(255, 255, 255, .25);
+        }
+
         #result b {
-            font-size: 64px;
+            font-size: 48px;
             line-height: 1;
             font-weight: 400;
-            display: block;
             color: #ffd45c;
             text-shadow: 3px 3px 0 var(--ink);
         }
@@ -534,23 +544,26 @@
     <div id="wrap">
         <div id="stage">
             <canvas id="c" width="360" height="640"></canvas>
-            <div id="overlay">
+            <div id="overlay" class="hidden">
                 <button id="giftLinkBtn" type="button" aria-label="Mở ảnh quà tặng" aria-haspopup="dialog"
                     title="Mở ảnh quà tặng">🎁</button>
                 <button id="settingsBtn" type="button" aria-label="Cài đặt">⚙️</button>
-                <h1 id="gameTitle">🐤</h1>
+                <h1 id="gameTitle">GAME OVER</h1>
                 <div id="deathMemeWrap">
                     <img id="deathMeme" src="catmeme.png" alt="Ảnh meme khi thua">
                     <span id="deathMemeText">Gàaaaaa</span>
                 </div>
                 <img id="highScoreImage" src="viettiep.jpg" alt="Ảnh thưởng khi đạt từ 100 điểm">
                 <p id="sub">Chạm để tung cánh. Tránh ống nhé mấy cưng!</p>
-                <div id="result" style="display:none"></div>
+                <div id="result" style="display:none">
+                    <div class="scoreRow"><span>HIGH SCORE</span><b id="bestScoreValue">0</b></div>
+                    <div class="scoreRow"><span>SCORE</span><b id="currentScoreValue">0</b></div>
+                </div>
                 <div id="nameRow"><input id="name" maxlength="14" placeholder="Nhập tên của mày" autocomplete="off">
                 </div>
                 <button id="playBtn">Chơi</button>
                 <div id="board">
-                    <h2>🏆 BẢNG XẾP HẠNG</h2>
+                    <h2>🏆 RANK</h2>
                     <ol id="list">
                         <li>Đang tải...</li>
                     </ol>
@@ -943,7 +956,7 @@
         /* --------------------------- Game --------------------------- */
         const cv = $("c"), ctx = cv.getContext("2d");
         const W = 360, H = 640, GROUND = 90;
-        const GRAVITY = 1500, FLAP = -430, SPEED = 140, GAP = 160, PIPE_W = 62, SPAWN = 1.55;
+        const GRAVITY = 1500, FLAP = -430, SPEED = 140, GAP = 125, PIPE_W = 54, SPAWN = 1.55;
         const customSounds = {
             flap: CUSTOM_FLAP_SOUND ? new Audio(CUSTOM_FLAP_SOUND) : null,
             score: CUSTOM_SCORE_SOUND ? new Audio(CUSTOM_SCORE_SOUND) : null,
@@ -1010,6 +1023,8 @@
 
         let state = "menu";            // menu | ready | play | over
         let bird, pipes, score, spawnT, deadT, playerName = "";
+        let pendingScore = null;
+        let personalBestScore = 0;
         let scrollX = 0;
         let birdImage = null, birdImageData = "";
         let cloudImage = null;
@@ -1133,7 +1148,15 @@
             bonusPopups.push({ x, y, age: 0, ttl: 1.2, size: 58 });
         }
 
-        try { playerName = localStorage.getItem("chimbay_name") || ""; } catch (e) { }
+        try {
+            playerName = localStorage.getItem("chimbay_name") || "";
+            const savedBestScore = Number(localStorage.getItem("chimbay_best_score"));
+            if (Number.isFinite(savedBestScore) && savedBestScore >= 0) {
+                personalBestScore = savedBestScore;
+            }
+        } catch (error) {
+            console.error("Không đọc được dữ liệu người chơi đã lưu", error);
+        }
         $("name").value = playerName;
 
         function setBirdImage(dataUrl) {
@@ -1143,7 +1166,7 @@
                 birdImage = image;
                 $("birdPreview").src = dataUrl;
                 $("birdPreview").style.display = "block";
-                renderBoard(playerName);
+                if (!$("overlay").classList.contains("hidden")) renderBoard(playerName);
             };
             image.onerror = () => {
                 console.error("Không thể tải ảnh đại diện");
@@ -1313,6 +1336,12 @@
             if (state !== "play") return;
             state = "over"; deadT = 0;
             const finalScore = score;
+            personalBestScore = Math.max(personalBestScore, finalScore);
+            try {
+                localStorage.setItem("chimbay_best_score", String(personalBestScore));
+            } catch (error) {
+                console.error("Không thể lưu điểm cao nhất trên thiết bị", error);
+            }
             playDeathSound();
             if (finalScore >= 0 && finalScore <= 50) {
                 showBonusEffect();
@@ -1322,9 +1351,14 @@
             setTimeout(async () => {
                 showOverlay(true, finalScore);
                 if (finalScore > 0) {
-                    try { await submitScore(playerName, finalScore); } catch (e) { $("status").textContent = "Không gửi được điểm lên BXH"; }
+                    if (playerName) {
+                        try { await submitScore(playerName, finalScore); } catch (e) { $("status").textContent = "Không gửi được điểm lên BXH"; }
+                    } else {
+                        pendingScore = finalScore;
+                    }
                 }
                 renderBoard(playerName);
+                if (pendingScore !== null) $("status").textContent = "Nhập tên rồi bấm PLAY để lưu điểm lên BXH.";
             }, 700);
         }
 
@@ -1340,7 +1374,7 @@
                 return item.x > -item.size;
             });
 
-            if (state === "ready") {
+            if (state === "menu" || state === "ready") {
                 bird.y = H / 2 - 40 + Math.sin(performance.now() / 200) * 8;
                 bird.flapT = Math.max(0, Math.sin(performance.now() / 120)) * 0.1;
                 return;
@@ -1560,8 +1594,8 @@
                 }
                 ctx.restore();
             }
-            if (state === "ready") {
-                const txt = "Chạm để bắt đầu";
+            if (state === "menu" || state === "ready") {
+                const txt = state === "menu" ? "Chạm để bắt đầu chơi" : "Chạm để bắt đầu";
                 ctx.globalAlpha = Math.floor(performance.now() / 500) % 2 ? 1 : 0.45;
                 ctx.font = "34px VT323, monospace"; ctx.textAlign = "center";
                 ctx.lineJoin = "round";
@@ -1590,12 +1624,21 @@
             const res = $("result");
             if (over) {
                 res.style.display = "block";
-                res.innerHTML = `Điểm của bạn<b>${finalScore}</b>`;
-                $("playBtn").textContent = "Chơi lại";
+                $("bestScoreValue").textContent = String(personalBestScore);
+                $("currentScoreValue").textContent = String(finalScore);
+                $("playBtn").textContent = "PLAY";
                 $("sub").style.display = "none";
             } else {
                 res.style.display = "none";
             }
+        }
+
+        function beginQuickGame() {
+            startBackgroundMusic();
+            reset();
+            state = "ready";
+            $("overlay").classList.add("hidden");
+            flap();
         }
 
         let startingGame = false;
@@ -1629,6 +1672,17 @@
             $("name").style.outline = "";
             playerName = n;
             syncNameEditUI();
+            if (pendingScore !== null) {
+                try {
+                    await submitScore(n, pendingScore);
+                    pendingScore = null;
+                    renderBoard(n);
+                } catch (error) {
+                    console.error("Không gửi được điểm lên BXH", error);
+                    $("status").textContent = "Không gửi được điểm lên BXH. Bấm PLAY để thử lại.";
+                    return;
+                }
+            }
             // Đồng bộ ảnh đại diện lên Firebase để người khác thấy trên BXH
             upsertPlayer(n, birdImageData).catch(error => {
                 console.error("Không gửi được ảnh đại diện", error);
@@ -1642,15 +1696,27 @@
         $("playBtn").addEventListener("click", startGame);
         $("name").addEventListener("keydown", e => { if (e.key === "Enter") startGame(); });
 
-        const press = e => { if (state === "ready" || state === "play") { e.preventDefault(); flap(); } };
+        const press = e => {
+            if (state === "menu") {
+                e.preventDefault();
+                beginQuickGame();
+            } else if (state === "ready" || state === "play") {
+                e.preventDefault();
+                flap();
+            }
+        };
         cv.addEventListener("pointerdown", press);
         window.addEventListener("keydown", e => {
             if (e.code === "Space" && document.activeElement !== $("name")) {
-                if (state === "ready" || state === "play") { e.preventDefault(); flap(); }
+                if (state === "menu") {
+                    e.preventDefault();
+                    beginQuickGame();
+                } else if (state === "ready" || state === "play") {
+                    e.preventDefault();
+                    flap();
+                }
             }
         });
-
-        renderBoard(playerName);
     </script>
 </body>
 
