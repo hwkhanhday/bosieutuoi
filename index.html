@@ -137,10 +137,39 @@
         }
 
         #nameRow {
+            position: absolute;
+            z-index: 2;
+            top: 10px;
+            left: 10px;
             display: flex;
-            gap: 8px;
-            width: 100%;
-            max-width: 280px;
+            align-items: center;
+            max-width: calc(100% - 20px);
+        }
+
+        #nameRow[hidden] {
+            display: none;
+        }
+
+        #nameDisplay {
+            color: #ffd45c;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-shadow: 2px 2px 0 var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #nameEditBtn {
+            flex: 0 0 auto;
+            padding: 0;
+            margin-left: 2ch;
+            font-size: 22px;
+            border: 0;
+            background: transparent;
+            color: #fff;
+            box-shadow: none;
         }
 
         #birdPreview {
@@ -170,6 +199,9 @@
         }
 
         #name {
+            flex: 0 1 14ch;
+            width: 14ch;
+            min-width: 8ch;
             background: transparent;
             color: #ffd45c;
             border: 0;
@@ -178,7 +210,14 @@
             font-size: 32px;
             font-weight: 700;
             letter-spacing: 1px;
+            text-align: left;
             text-shadow: 2px 2px 0 var(--ink);
+        }
+
+        #name[hidden],
+        #nameDisplay[hidden],
+        #nameEditBtn[hidden] {
+            display: none;
         }
 
         #name::placeholder {
@@ -554,9 +593,14 @@
     <div id="wrap">
         <div id="stage">
             <canvas id="c" width="360" height="640"></canvas>
+            <div id="nameRow">
+                <input id="name" maxlength="14" placeholder="Nhập tên của mày" autocomplete="off">
+                <span id="nameDisplay" hidden></span>
+                <button id="nameEditBtn" type="button" aria-label="Đổi tên" title="Đổi tên" hidden>✏️</button>
+            </div>
             <div id="overlay" class="hidden">
-                <button id="giftLinkBtn" type="button" aria-label="Mở video quà tặng" aria-haspopup="dialog"
-                    title="Mở video quà tặng">🎁</button>
+                <button id="giftLinkBtn" type="button" aria-label="Mở quà tặng" aria-haspopup="dialog"
+                    title="Mở quà tặng">🎁</button>
                 <button id="settingsBtn" type="button" aria-label="Cài đặt">⚙️</button>
                 <h1 id="gameTitle">GAME OVER</h1>
                 <div id="deathMemeWrap">
@@ -569,8 +613,6 @@
                     <div class="scoreRow"><span>HIGH SCORE</span><b id="bestScoreValue">0</b></div>
                     <div class="scoreRow"><span>SCORE</span><b id="currentScoreValue">0</b></div>
                 </div>
-                <div id="nameRow"><input id="name" maxlength="14" placeholder="Nhập tên của mày" autocomplete="off">
-                </div>
                 <button id="playBtn">Chơi</button>
                 <div id="board">
                     <h2>🏆 RANK</h2>
@@ -582,12 +624,6 @@
 
                 <div id="settingsPanel">
                     <h2>⚙️ Cài đặt</h2>
-
-                    <div class="setSec">
-                        <h3>ĐỔI TÊN</h3>
-                        <div id="nameNote" style="font-size:16px;opacity:.8;min-height:16px">Có thể đổi tên sau mỗi 24
-                            giờ.</div>
-                    </div>
 
                     <div class="setSec">
                         <h3>ÂM THANH</h3>
@@ -620,8 +656,8 @@
                     <div class="setSec">
                         <h3>GIAO DIỆN</h3>
                         <div class="seg">
-                            <button id="themeDay" type="button">☀️ Ban ngày</button>
-                            <button id="themeNight" type="button">🌙 Ban đêm</button>
+                            <button id="themeDay" type="button">☀️ Buổi trưa</button>
+                            <button id="themeNight" type="button">🌙 Buồi túi</button>
                         </div>
                     </div>
 
@@ -649,14 +685,14 @@
            ============================================================ */
         const FIREBASE_PROJECT_ID = "khanhnekk";
         const FIREBASE_API_KEY = "AIzaSyALWXuYBHHnCRIV-bTl4oUCeRuoS4YE4nY";
-        const NAME_CHANGE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-        const NAME_CHANGE_TIME_KEY = "chimbay_name_changed_at";
         const CUSTOM_FLAP_SOUND = "vocanh.mp3"; // e.g. "vot-canh.mp3"
         const CUSTOM_SCORE_SOUND = "ting.mp3"; // e.g. "qua-cot.mp3"
         const CUSTOM_DEATH_SOUND = "catmemesound.mp3"; // e.g. "khi-chet.mp3"
         const CUSTOM_EXTRA_DEATH_SOUND = "chet.mp3";
         const HIGH_SCORE_DEATH_SOUND = new Audio("siren head.mp3");
         const BONUS_IMAGE_PATH = "chotiep.jpg";
+        const PLANE_IMAGE_PATH = "vietjet.png";
+        const TOWER_IMAGE_PATH = "thapdoi.png";
         const BACKGROUND_MUSIC_PATH = "ffob1.mp3";
         const CLOUD_IMAGE_PATH = "chotiep.jpg";
         const AVATAR_SIZE = 96; // Kích thước ảnh đại diện (px) khi lưu lên BXH
@@ -987,7 +1023,7 @@
         /* --------------------------- Game --------------------------- */
         const cv = $("c"), ctx = cv.getContext("2d");
         const W = 360, H = 640, GROUND = 90;
-        const GRAVITY = 1500, FLAP = -430, SPEED = 140, GAP = 125, PIPE_W = 54, SPAWN = 1.55;
+        const FALL_GRAVITY = 1100, FLAP = -310, SPEED = 140, GAP = 125, PIPE_W = 54, SPAWN = 1.55;
         const customSounds = {
             flap: CUSTOM_FLAP_SOUND ? new Audio(CUSTOM_FLAP_SOUND) : null,
             score: CUSTOM_SCORE_SOUND ? new Audio(CUSTOM_SCORE_SOUND) : null,
@@ -1026,43 +1062,21 @@
             p: i * 1.7
         }));
 
-        /* Nhân vật chim pixel (thiết kế riêng) */
-        const BIRD_ROWS = [
-            "...oooooo....",
-            "..obbbbbbo...",
-            ".obbbbbwwwo..",
-            "obbbbbbwkwo..",
-            "obbbbbbbbboyy",
-            "obbbbbbbbboyy",
-            "obbbbbbbbbo..",
-            ".owwwwwwwwo..",
-            "..owwwwwwo...",
-            "...oooooo...."
-        ];
-        const BIRD_PAL = { o: "#1b2a49", b: "#46b3ff", d: "#2a74d6", w: "#ffffff", k: "#1b2a49", y: "#ffb703" };
-
-        function drawSprite(rows, pal, ox, oy, u) {
-            for (let r = 0; r < rows.length; r++) {
-                for (let c = 0; c < rows[r].length; c++) {
-                    const ch = rows[r][c];
-                    if (ch === ".") continue;
-                    ctx.fillStyle = pal[ch];
-                    ctx.fillRect(ox + c * u, oy + r * u, u + 0.4, u + 0.4);
-                }
-            }
-        }
-
         let state = "menu";            // menu | ready | play | over
         let bird, pipes, score, spawnT, deadT, playerName = "";
         let pendingScore = null;
         let personalBestScore = 0;
         let scrollX = 0;
         let birdImage = null, birdImageData = "";
+        let planeImage = null;
+        let towerImage = null;
         let cloudImage = null;
         let bonusImage = null;
         let cloudsX = [40, 190, 300];
         let gameAudio = null;
         let bonusPopups = [];
+        let explosionParticles = [];
+        let planeExploded = false;
         let groundImagePasses = [];
         const backgroundMusic = new Audio(BACKGROUND_MUSIC_PATH);
         backgroundMusic.loop = true;
@@ -1092,6 +1106,14 @@
             image.onerror = () => console.error(`Không thể tải ảnh thưởng: ${BONUS_IMAGE_PATH}`);
             image.src = BONUS_IMAGE_PATH;
         }
+        const planeAsset = new Image();
+        planeAsset.onload = () => { planeImage = planeAsset; };
+        planeAsset.onerror = () => console.error(`Không thể tải ảnh máy bay: ${PLANE_IMAGE_PATH}; dùng hình máy bay vẽ sẵn.`);
+        planeAsset.src = PLANE_IMAGE_PATH;
+        const towerAsset = new Image();
+        towerAsset.onload = () => { towerImage = towerAsset; };
+        towerAsset.onerror = () => console.error(`Không thể tải ảnh tòa tháp: ${TOWER_IMAGE_PATH}; dùng hình tòa nhà vẽ sẵn.`);
+        towerAsset.src = TOWER_IMAGE_PATH;
 
         function playCustomSound(sound, name) {
             if (!sound) return false;
@@ -1173,10 +1195,179 @@
             });
         }
 
-        function showBonusEffect() {
-            const x = Math.min(W - 38, Math.max(30, bird.x + 32));
-            const y = Math.max(70, bird.y - 14);
-            bonusPopups.push({ x, y, age: 0, ttl: 1.2, size: 58 });
+        function createExplosion(x, y, towerStyle = 0) {
+            const planeColors = ["#f4f6f8", "#4c83b4", "#b8c8d6", "#83c9e8", "#26384c"];
+            const tower = BUILDING_STYLES[towerStyle % BUILDING_STYLES.length];
+            const debrisColors = [...planeColors, tower.wall, tower.shadow, tower.glass];
+            const planeScale = planeImage && planeImage.naturalWidth
+                ? Math.min(56 / planeImage.naturalWidth, 42 / planeImage.naturalHeight)
+                : null;
+            const planeWidth = planeScale ? planeImage.naturalWidth * planeScale : 50;
+            const planeHeight = planeScale ? planeImage.naturalHeight * planeScale : 36;
+            const splitAt = planeWidth * 0.62;
+            const localFragments = [
+                { side: "tail", centerX: -planeWidth / 2 + splitAt / 2, sourceX: 0, sourceWidth: planeScale ? splitAt / planeScale : 0 },
+                { side: "nose", centerX: -planeWidth / 2 + (splitAt + planeWidth) / 2, sourceX: planeScale ? splitAt / planeScale : 0, sourceWidth: planeScale ? (planeWidth - splitAt) / planeScale : 0 }
+            ];
+            const cos = Math.cos(bird.rot), sin = Math.sin(bird.rot);
+            for (const fragment of localFragments) {
+                explosionParticles.push({
+                    x: bird.x + fragment.centerX * cos,
+                    y: bird.y + fragment.centerX * sin,
+                    vx: fragment.side === "nose" ? 54 : -46,
+                    vy: fragment.side === "nose" ? -18 : -62,
+                    age: 0,
+                    ttl: 2.4,
+                    rotation: bird.rot,
+                    spin: fragment.side === "nose" ? 2.1 : -1.6,
+                    kind: "planeFragment",
+                    side: fragment.side,
+                    sourceX: fragment.sourceX,
+                    sourceWidth: fragment.sourceWidth,
+                    width: fragment.side === "nose" ? planeWidth - splitAt : splitAt,
+                    height: planeHeight
+                });
+            }
+
+            explosionParticles.push({
+                x, y, vx: 0, vy: 0, spin: 0, rotation: 0, size: 5, age: 0, ttl: 0.22, kind: "flash"
+            });
+            for (let i = 0; i < 30; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 70 + Math.random() * 230;
+                explosionParticles.push({
+                    x: x + (Math.random() - 0.5) * 26,
+                    y: y + (Math.random() - 0.5) * 18,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 25,
+                    size: 3 + Math.random() * 7,
+                    color: debrisColors[Math.floor(Math.random() * debrisColors.length)],
+                    age: 0,
+                    ttl: 0.55 + Math.random() * 0.55,
+                    rotation: Math.random() * Math.PI,
+                    spin: (Math.random() - 0.5) * 12,
+                    kind: "debris"
+                });
+            }
+            for (let i = 0; i < 14; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 50 + Math.random() * 170;
+                explosionParticles.push({
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 20,
+                    size: 3 + Math.random() * 5,
+                    color: ["#ffec8a", "#ff9b38", "#f04b37"][i % 3],
+                    age: 0,
+                    ttl: 0.35 + Math.random() * 0.3,
+                    rotation: 0,
+                    spin: 0,
+                    kind: "fire"
+                });
+            }
+            for (let i = 0; i < 12; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 12 + Math.random() * 75;
+                explosionParticles.push({
+                    x: x + (Math.random() - 0.5) * 12,
+                    y: y + (Math.random() - 0.5) * 10,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 42,
+                    size: 9 + Math.random() * 12,
+                    color: ["#292929", "#454545", "#66615c"][i % 3],
+                    age: 0,
+                    ttl: 0.8 + Math.random() * 0.55,
+                    rotation: 0,
+                    spin: 0,
+                    kind: "smoke"
+                });
+            }
+            planeExploded = true;
+        }
+
+        function drawTowerScorch(x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = "rgba(20,18,18,.78)";
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 11, 15, -0.25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "rgba(5,5,5,.72)";
+            ctx.fillRect(-7, -9, 8, 12);
+            ctx.fillRect(1, -5, 6, 13);
+            ctx.strokeStyle = "rgba(20,15,15,.9)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-2, -9);
+            ctx.lineTo(-5, -15);
+            ctx.moveTo(3, 5);
+            ctx.lineTo(7, 11);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawTowerFire(x, y) {
+            const time = performance.now() / 100;
+            const flicker = Math.sin(time) * 2;
+            ctx.save();
+            ctx.translate(x, y);
+
+            const glow = ctx.createRadialGradient(0, 0, 2, 0, -7, 30);
+            glow.addColorStop(0, "rgba(255,105,20,.55)");
+            glow.addColorStop(1, "rgba(255,75,15,0)");
+            ctx.fillStyle = glow;
+            ctx.fillRect(-30, -38, 60, 48);
+
+            ctx.fillStyle = "#d9341f";
+            ctx.beginPath();
+            ctx.moveTo(-13, 9);
+            ctx.lineTo(-14, -3 + flicker);
+            ctx.lineTo(-8, -12);
+            ctx.lineTo(-7, -24 - flicker);
+            ctx.lineTo(-1, -15);
+            ctx.lineTo(3, -28 + flicker);
+            ctx.lineTo(7, -15);
+            ctx.lineTo(13, -21 - flicker);
+            ctx.lineTo(12, -5);
+            ctx.lineTo(16, 9);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = "#ff8c1a";
+            ctx.beginPath();
+            ctx.moveTo(-9, 8);
+            ctx.lineTo(-8, -4 - flicker);
+            ctx.lineTo(-3, -12);
+            ctx.lineTo(0, -4);
+            ctx.lineTo(5, -18 + flicker);
+            ctx.lineTo(9, -5);
+            ctx.lineTo(11, 8);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = "#ffe36e";
+            ctx.beginPath();
+            ctx.moveTo(-4, 8);
+            ctx.lineTo(-2, -3 + flicker);
+            ctx.lineTo(2, -10);
+            ctx.lineTo(5, 0);
+            ctx.lineTo(7, 8);
+            ctx.closePath();
+            ctx.fill();
+
+            for (let i = 0; i < 3; i++) {
+                const puffY = -25 - i * 14 - ((time * (0.6 + i * 0.13)) % 14);
+                const puffX = Math.sin(time * 0.7 + i * 2) * (5 + i * 3);
+                ctx.globalAlpha = 0.48 - i * 0.1;
+                ctx.fillStyle = "#454545";
+                ctx.beginPath();
+                ctx.arc(puffX, puffY, 6 + i * 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(puffX + 5, puffY + 2, 5 + i, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
         }
 
         try {
@@ -1307,44 +1498,38 @@
             saveSettings();
         });
         $("volume").addEventListener("change", () => playFlapSound());
-
         $("themeDay").addEventListener("click", () => { settings.theme = "day"; saveSettings(); syncSettingsUI(); });
         $("themeNight").addEventListener("click", () => { settings.theme = "night"; saveSettings(); syncSettingsUI(); });
         syncSettingsUI();
 
-        function getNameChangeRemainingMs() {
-            let changedAt = 0;
-            try {
-                changedAt = Number(localStorage.getItem(NAME_CHANGE_TIME_KEY)) || 0;
-            } catch (error) {
-                console.error("Không đọc được thời gian đổi tên", error);
-            }
-            return Math.max(0, changedAt + NAME_CHANGE_COOLDOWN_MS - Date.now());
-        }
-
         function syncNameEditUI() {
             const inp = $("name");
-            const remainingMs = getNameChangeRemainingMs();
-            inp.disabled = remainingMs > 0;
-            inp.style.background = "transparent";
-            inp.style.color = "#ffd45c";
-            if (remainingMs > 0) {
-                const totalSeconds = Math.ceil(remainingMs / 1000);
-                const hours = Math.floor(totalSeconds / 3600);
-                const minutes = Math.floor((totalSeconds % 3600) / 60);
-                const seconds = totalSeconds % 60;
-                $("nameNote").textContent = `Có thể đổi tên sau ${hours} giờ ${minutes} phút ${seconds} giây.`;
-            } else {
-                $("nameNote").textContent = "Có thể đổi tên. Sau khi đổi, cần chờ 24 giờ để đổi tiếp.";
-            }
+            const editing = !playerName || nameEditing;
+            inp.hidden = !editing;
+            $("nameDisplay").hidden = editing;
+            $("nameDisplay").textContent = playerName;
+            $("nameEditBtn").hidden = !playerName;
         }
+
+        let nameEditing = false;
+
         syncNameEditUI();
-        setInterval(syncNameEditUI, 1000);
+
+        $("nameEditBtn").addEventListener("click", () => {
+            nameEditing = true;
+            syncNameEditUI();
+            $("name").focus();
+            $("name").select();
+            $("status").textContent = "";
+        });
+        $("name").addEventListener("input", syncNameEditUI);
 
         function reset() {
             bird = { x: 90, y: H / 2 - 40, vy: 0, rot: 0, flapT: 0 };
             pipes = []; score = 0; spawnT = 0.9; deadT = 0;
             bonusPopups = [];
+            explosionParticles = [];
+            planeExploded = false;
             groundImagePasses = [];
         }
         reset();
@@ -1360,12 +1545,18 @@
 
         function addPipe() {
             const min = 90, max = H - GROUND - GAP - 90;
-            pipes.push({ x: W + 10, top: min + Math.random() * (max - min), passed: false });
+            pipes.push({
+                x: W + 10,
+                top: min + Math.random() * (max - min),
+                passed: false,
+                style: Math.floor(Math.random() * BUILDING_STYLES.length)
+            });
         }
 
-        function die() {
+        function die(impactX = bird.x, impactY = bird.y, towerStyle = 0) {
             if (state !== "play") return;
             state = "over"; deadT = 0;
+            createExplosion(impactX, impactY, towerStyle);
             const finalScore = score;
             personalBestScore = Math.max(personalBestScore, finalScore);
             try {
@@ -1374,9 +1565,7 @@
                 console.error("Không thể lưu điểm cao nhất trên thiết bị", error);
             }
             playDeathSound();
-            if (finalScore >= 0 && finalScore <= 50) {
-                showBonusEffect();
-            } else if (finalScore >= 100) {
+            if (finalScore >= 100) {
                 playHighScoreDeathSound();
             }
             setTimeout(async () => {
@@ -1390,7 +1579,7 @@
                 }
                 renderBoard(playerName);
                 if (pendingScore !== null) $("status").textContent = "Nhập tên rồi bấm PLAY để lưu điểm lên BXH.";
-            }, 700);
+            }, 1700);
         }
 
         function update(dt) {
@@ -1399,6 +1588,15 @@
             bonusPopups = bonusPopups.filter(item => {
                 item.age += dt;
                 return item.age < item.ttl;
+            });
+            explosionParticles = explosionParticles.filter(particle => {
+                particle.age += dt;
+                particle.x += particle.vx * dt;
+                particle.y += particle.vy * dt;
+                particle.vy += (particle.kind === "smoke" ? -12 : 520) * dt;
+                particle.vx *= Math.max(0, 1 - (particle.kind === "smoke" ? 0.7 : 1.4) * dt);
+                particle.rotation += particle.spin * dt;
+                return particle.age < particle.ttl;
             });
             groundImagePasses = groundImagePasses.filter(item => {
                 item.x -= item.speed * dt;
@@ -1411,9 +1609,9 @@
                 return;
             }
             if (state === "play" || state === "over") {
-                bird.vy += GRAVITY * dt;
+                bird.vy += FALL_GRAVITY * dt;
                 bird.y += bird.vy * dt;
-                bird.rot = Math.max(-0.5, Math.min(1.3, bird.vy / 520));
+                bird.rot = Math.max(-0.5, Math.min(1.1, bird.vy / 620));
                 bird.flapT = Math.max(0, bird.flapT - dt);
             }
             if (state === "play") {
@@ -1430,7 +1628,17 @@
                         }
                     }
                     const bx = bird.x, by = bird.y, r = 12;
-                    if (bx + r > p.x && bx - r < p.x + PIPE_W && (by - r < p.top || by + r > p.top + GAP)) die();
+                    const bottomY = p.top + GAP;
+                    if (bx + r > p.x && bx - r < p.x + PIPE_W && (by - r < p.top || by + r > p.top + GAP)) {
+                        const impactX = Math.max(p.x, Math.min(p.x + PIPE_W, bx));
+                        if (by < p.top) {
+                            p.topScorch = { x: impactX - p.x, y: Math.max(0, Math.min(p.top + 4, by + 4)) };
+                        } else {
+                            p.bottomScorch = { x: impactX - p.x, y: Math.max(0, Math.min(H - bottomY, by - bottomY)) };
+                        }
+                        die(bx, by, p.style);
+                        break;
+                    }
                 }
                 pipes = pipes.filter(p => p.x > -PIPE_W - 10);
                 if (bird.y + 12 >= H - GROUND) { bird.y = H - GROUND - 12; die(); }
@@ -1480,31 +1688,142 @@
             }
         }
 
-        /* Ống tre */
-        const INK = "#1f5a2a";
-        function bambooBody(x, y, h) {
-            if (h <= 0) return;
-            ctx.fillStyle = "#7fd35a"; ctx.fillRect(x, y, PIPE_W, h);
-            ctx.fillStyle = "#4aa83f"; ctx.fillRect(x, y, 10, h); ctx.fillRect(x + PIPE_W - 8, y, 8, h);
-            ctx.fillStyle = "#b9f08e"; ctx.fillRect(x + 16, y, 6, h);
-            ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.strokeRect(x, y, PIPE_W, h);
+        function drawGroundBush(x, y, scale, variant) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            const width = variant ? 44 : 34;
+            ctx.fillStyle = "#285b2b";
+            ctx.fillRect(4, -8, width - 8, 12);
+            ctx.fillRect(0, -12, 12, 12);
+            ctx.fillRect(8, -20, 18, 20);
+            ctx.fillRect(22, -14, width - 22, 14);
+            if (variant) ctx.fillRect(30, -20, 10, 20);
+            ctx.fillStyle = variant ? "#3d963d" : "#459e3c";
+            ctx.fillRect(4, -12, 8, 8);
+            ctx.fillRect(12, -16, 12, 12);
+            ctx.fillRect(26, -10, 8, 8);
+            if (variant) ctx.fillRect(32, -16, 6, 8);
+            ctx.fillStyle = "#79cb50";
+            ctx.fillRect(8, -16, 8, 4);
+            ctx.fillRect(24, -12, 4, 4);
+            ctx.restore();
         }
-        function bambooNode(x, y, w, h) {
-            ctx.fillStyle = "#5cc24a"; ctx.fillRect(x, y, w, h);
-            ctx.fillStyle = "#a6e57d"; ctx.fillRect(x + 3, y + 3, w - 6, 3);
-            ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.strokeRect(x, y, w, h);
+
+        const BUILDING_STYLES = [
+            { wall: "#607b9c", shadow: "#344b69", glass: "#a6d8e8", lit: "#ffe49a", roof: "#293d5a" },
+            { wall: "#71808c", shadow: "#414f5d", glass: "#8dc8db", lit: "#ffe49a", roof: "#303d4a" },
+            { wall: "#647d83", shadow: "#354e55", glass: "#a3d6ce", lit: "#ffe49a", roof: "#293f43" }
+        ];
+
+        function drawSkyscraper(x, y, h, roofAtBottom, styleIndex) {
+            if (h <= 0) return;
+            if (towerImage && towerImage.complete && towerImage.naturalWidth) {
+                if (roofAtBottom) {
+                    ctx.save();
+                    ctx.translate(x, y + h);
+                    ctx.scale(1, -1);
+                    ctx.drawImage(towerImage, 0, 0, PIPE_W, h);
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(towerImage, x, y, PIPE_W, h);
+                }
+                return;
+            }
+            const style = BUILDING_STYLES[styleIndex % BUILDING_STYLES.length];
+            const roofY = roofAtBottom ? y + h - 8 : y;
+
+            ctx.fillStyle = style.wall;
+            ctx.fillRect(x, y, PIPE_W, h);
+            ctx.fillStyle = style.shadow;
+            ctx.fillRect(x, y, 7, h);
+            ctx.fillRect(x + PIPE_W - 5, y, 5, h);
+            ctx.fillStyle = "rgba(255,255,255,.16)";
+            ctx.fillRect(x + 8, y, 2, h);
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(x, y, PIPE_W, h);
+            ctx.clip();
+            const firstFloor = Math.floor((y - 8) / 26);
+            const lastFloor = Math.ceil((y + h) / 26);
+            for (let floor = firstFloor; floor <= lastFloor; floor++) {
+                const windowY = floor * 26 + 5;
+                for (let column = 0; column < 3; column++) {
+                    const windowX = x + 11 + column * 13;
+                    const isLit = (floor * 7 + column * 11 + styleIndex * 5) % 6 === 0;
+                    ctx.fillStyle = isLit ? style.lit : style.glass;
+                    ctx.fillRect(windowX, windowY, 8, 13);
+                    ctx.fillStyle = "rgba(30,48,67,.35)";
+                    ctx.fillRect(windowX, windowY + 12, 8, 1);
+                }
+                ctx.fillStyle = style.shadow;
+                ctx.fillRect(x + 7, floor * 26 + 22, PIPE_W - 12, 2);
+            }
+            ctx.restore();
+
+            ctx.fillStyle = style.roof;
+            ctx.fillRect(x, roofY, PIPE_W, 8);
+            ctx.fillStyle = "#a9c4d0";
+            ctx.fillRect(x + 4, roofY, PIPE_W - 8, 2);
+            ctx.fillStyle = style.shadow;
+            ctx.fillRect(x, y, 3, h);
+            ctx.fillRect(x + PIPE_W - 3, y, 3, h);
         }
 
         function drawPipe(p) {
-            const bottomY = p.top + GAP, capH = 24, ext = 5;
-            // ống trên
-            bambooBody(p.x, -4, p.top - capH + 4);
-            for (let ny = p.top - capH - 72; ny > -10; ny -= 72) bambooNode(p.x - 3, ny, PIPE_W + 6, 10);
-            bambooNode(p.x - ext, p.top - capH, PIPE_W + ext * 2, capH);
-            // ống dưới
-            bambooBody(p.x, bottomY + capH, H);
-            for (let ny = bottomY + capH + 62; ny < H; ny += 72) bambooNode(p.x - 3, ny, PIPE_W + 6, 10);
-            bambooNode(p.x - ext, bottomY, PIPE_W + ext * 2, capH);
+            const bottomY = p.top + GAP;
+            drawSkyscraper(p.x, -4, p.top + 4, true, p.style);
+            drawSkyscraper(p.x, bottomY, H - bottomY, false, p.style);
+            if (p.topScorch) {
+                const x = p.x + p.topScorch.x, y = -4 + p.topScorch.y;
+                drawTowerScorch(x, y);
+                if (state === "over") drawTowerFire(x, y);
+            }
+            if (p.bottomScorch) {
+                const x = p.x + p.bottomScorch.x, y = bottomY + p.bottomScorch.y;
+                drawTowerScorch(x, y);
+                if (state === "over") drawTowerFire(x, y);
+            }
+        }
+
+        function drawPlaneShape(points, fill, stroke = "#26384c") {
+            ctx.beginPath();
+            ctx.moveTo(points[0][0], points[0][1]);
+            for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+            ctx.closePath();
+            ctx.fillStyle = fill;
+            ctx.fill();
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+
+        function drawCommercialPlane() {
+            ctx.scale(0.82, 0.82);
+
+            drawPlaneShape([[-1, -5], [-17, -20], [-11, -20], [3, -5], [6, 0], [-2, 1]], "#b8c8d6");
+            drawPlaneShape([[-2, 0], [-17, 14], [-11, 15], [3, 1], [5, -4]], "#91a7bb");
+            drawPlaneShape([[-17, -3], [-23, -13], [-18, -12], [-8, -3], [-15, 3]], "#426d9b");
+            drawPlaneShape([[-17, 2], [-23, 10], [-18, 9], [-8, 2], [-15, -3]], "#426d9b");
+
+            drawPlaneShape([
+                [-25, -2], [-20, -5], [13, -5], [21, -3], [25, 0],
+                [22, 3], [13, 5], [-20, 5], [-25, 2]
+            ], "#f4f6f8");
+            ctx.fillStyle = "#4c83b4";
+            ctx.fillRect(-19, 2, 37, 2);
+            ctx.fillStyle = "#426d9b";
+            ctx.fillRect(-24, -2, 6, 4);
+
+            ctx.fillStyle = "#3a5066";
+            for (let x = -13; x <= 8; x += 5) ctx.fillRect(x, -2, 2, 1.5);
+            ctx.fillStyle = "#83c9e8";
+            ctx.fillRect(14, -3, 5, 2);
+
+            ctx.fillStyle = "#d5e0e8";
+            ctx.fillRect(-6, -10, 4, 2);
+            ctx.fillRect(-6, 9, 4, 2);
         }
 
         function drawBird() {
@@ -1524,12 +1843,15 @@
                 ctx.stroke();
                 return;
             }
-            const u = 3, ox = -19.5, oy = -15;
-            drawSprite(BIRD_ROWS, BIRD_PAL, ox, oy, u);
-            // cánh (2x2 ô) đổi vị trí khi vỗ
-            const wy = bird.flapT > 0 ? 2 : 4;
-            ctx.fillStyle = BIRD_PAL.d;
-            ctx.fillRect(ox + 3 * u, oy + wy * u, 2 * u, 2 * u);
+            if (planeImage && planeImage.complete && planeImage.naturalWidth) {
+                const scale = Math.min(56 / planeImage.naturalWidth, 42 / planeImage.naturalHeight);
+                const width = planeImage.naturalWidth * scale;
+                const height = planeImage.naturalHeight * scale;
+                ctx.drawImage(planeImage, -width / 2, -height / 2, width, height);
+                ctx.restore();
+                return;
+            }
+            drawCommercialPlane();
             ctx.restore();
         }
 
@@ -1586,6 +1908,19 @@
             ctx.fillStyle = "#4ca03a";
             for (let c = 0; c < W / 16 + 2; c++) ctx.fillRect(c * 16 - px, gy + 14, 8, 6);
             ctx.fillStyle = "#2f6b2a"; ctx.fillRect(0, gy, W, 3);
+            const bushSpacing = 88;
+            const bushOffset = scrollX % bushSpacing;
+            const firstBush = Math.floor(scrollX / bushSpacing);
+            const bushScales = [1.25, 2.25, 1.05, 1.75];
+            for (let i = -1; i < W / bushSpacing + 2; i++) {
+                const bushIndex = firstBush + i;
+                const variant = Math.abs(bushIndex) % 2;
+                const bushX = i * bushSpacing - bushOffset + 18;
+                drawGroundBush(bushX, gy + 12, bushScales[Math.abs(bushIndex) % bushScales.length], variant);
+                if (Math.abs(bushIndex) % 3 === 1) {
+                    drawGroundBush(bushX + 42, gy + 12, 0.9, 1 - variant);
+                }
+            }
 
             if (settings.theme === "night") {
                 ctx.fillStyle = "rgba(10,20,50,.4)";
@@ -1599,7 +1934,68 @@
                 }
             }
 
-            drawBird();
+            if (!planeExploded) drawBird();
+
+            for (const particle of explosionParticles) {
+                const alpha = 1 - particle.age / particle.ttl;
+                if (alpha <= 0) continue;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.translate(particle.x, particle.y);
+                if (particle.kind === "flash") {
+                    const progress = particle.age / particle.ttl;
+                    const radius = 38 * progress;
+                    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+                    gradient.addColorStop(0, "#fff8bd");
+                    gradient.addColorStop(0.35, "#ffb52e");
+                    gradient.addColorStop(1, "rgba(240,75,55,0)");
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (particle.kind === "smoke") {
+                    const progress = particle.age / particle.ttl;
+                    const radius = particle.size * (0.6 + progress * 1.1);
+                    ctx.fillStyle = particle.color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (particle.kind === "planeFragment") {
+                    ctx.rotate(particle.rotation);
+                    if (planeImage && planeImage.complete && planeImage.naturalWidth) {
+                        ctx.drawImage(
+                            planeImage,
+                            particle.sourceX, 0, particle.sourceWidth, planeImage.naturalHeight,
+                            -particle.width / 2, -particle.height / 2, particle.width, particle.height
+                        );
+                    } else {
+                        ctx.fillStyle = "#f4f6f8";
+                        if (particle.side === "nose") {
+                            ctx.beginPath();
+                            ctx.moveTo(-particle.width / 2, -5);
+                            ctx.lineTo(particle.width / 2, -2);
+                            ctx.lineTo(particle.width / 2, 2);
+                            ctx.lineTo(-particle.width / 2, 5);
+                            ctx.closePath();
+                            ctx.fill();
+                        } else {
+                            drawPlaneShape([[-25, -2], [-20, -5], [10, -5], [5, 5], [-20, 5], [-25, 2]], "#f4f6f8");
+                            drawPlaneShape([[-18, -3], [-23, -13], [-18, -12], [-8, -3], [-15, 3]], "#426d9b");
+                        }
+                    }
+                } else {
+                    ctx.rotate(particle.rotation);
+                    ctx.fillStyle = particle.color;
+                    if (particle.kind === "fire") {
+                        ctx.beginPath();
+                        ctx.arc(0, 0, particle.size * alpha, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size);
+                    }
+                }
+                ctx.restore();
+            }
 
             if (state === "play" || state === "over") {
                 ctx.font = "72px VT323, monospace"; ctx.textAlign = "center";
@@ -1647,6 +2043,7 @@
         /* ------------------------ Điều khiển ------------------------ */
         function showOverlay(over, finalScore) {
             $("overlay").classList.remove("hidden");
+            $("nameRow").hidden = true;
             const showDeathMeme = over && finalScore >= 1 && finalScore <= 9;
             const showHighScoreImage = over && finalScore >= 100;
             $("gameTitle").style.display = showDeathMeme || showHighScoreImage ? "none" : "";
@@ -1668,6 +2065,7 @@
             startBackgroundMusic();
             reset();
             state = "ready";
+            $("nameRow").hidden = false;
             $("overlay").classList.add("hidden");
             flap();
         }
@@ -1678,17 +2076,11 @@
             const n = $("name").value.trim();
             if (!n) { $("name").focus(); $("name").style.outline = "3px solid #ff5a5a"; return; }
             const nameChanged = n !== playerName;
-            if (nameChanged && getNameChangeRemainingMs() > 0) {
-                syncNameEditUI();
-                return;
-            }
             startingGame = true;
             $("playBtn").disabled = true;
             try {
                 if (nameChanged && playerName) await renamePlayerScores(playerName, n);
                 if (nameChanged) {
-                    const changedAt = Date.now();
-                    localStorage.setItem(NAME_CHANGE_TIME_KEY, String(changedAt));
                     localStorage.setItem("chimbay_name", n);
                 }
             } catch (error) {
@@ -1702,6 +2094,7 @@
             startBackgroundMusic();
             $("name").style.outline = "";
             playerName = n;
+            nameEditing = false;
             syncNameEditUI();
             if (pendingScore !== null) {
                 try {
@@ -1721,6 +2114,7 @@
             });
             reset();
             state = "ready";
+            $("nameRow").hidden = false;
             $("overlay").classList.add("hidden");
         }
 
