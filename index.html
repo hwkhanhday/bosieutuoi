@@ -348,7 +348,7 @@
             animation: none;
         }
 
-        #giftImageModal {
+        #giftMediaModal {
             position: fixed;
             inset: 0;
             z-index: 20;
@@ -359,17 +359,17 @@
             background: rgba(0, 0, 0, .94);
         }
 
-        #giftImageModal[hidden] {
+        #giftMediaModal[hidden] {
             display: none;
         }
 
-        #giftImageModal img {
+        #giftMediaModal video {
             width: 100%;
             height: 100%;
             object-fit: contain;
         }
 
-        #closeGiftImage {
+        #closeGiftMedia {
             position: absolute;
             top: calc(env(safe-area-inset-top, 0px) + 12px);
             right: calc(env(safe-area-inset-right, 0px) + 12px);
@@ -545,8 +545,8 @@
         <div id="stage">
             <canvas id="c" width="360" height="640"></canvas>
             <div id="overlay" class="hidden">
-                <button id="giftLinkBtn" type="button" aria-label="Mở ảnh quà tặng" aria-haspopup="dialog"
-                    title="Mở ảnh quà tặng">🎁</button>
+                <button id="giftLinkBtn" type="button" aria-label="Mở video quà tặng" aria-haspopup="dialog"
+                    title="Mở video quà tặng">🎁</button>
                 <button id="settingsBtn" type="button" aria-label="Cài đặt">⚙️</button>
                 <h1 id="gameTitle">GAME OVER</h1>
                 <div id="deathMemeWrap">
@@ -626,9 +626,9 @@
             </div>
         </div>
     </div>
-    <div id="giftImageModal" role="dialog" aria-modal="true" aria-label="Ảnh quà tặng" hidden>
-        <img src="momo.webp" alt="Ảnh quà tặng">
-        <button id="closeGiftImage" type="button" aria-label="Đóng ảnh quà tặng" title="Đóng">×</button>
+    <div id="giftMediaModal" role="dialog" aria-modal="true" aria-label="Video quà tặng" hidden>
+        <video src="zalocrepy.mp4" controls playsinline aria-label="Video quà tặng"></video>
+        <button id="closeGiftMedia" type="button" aria-label="Đóng video quà tặng" title="Đóng">×</button>
     </div>
 
     <script>
@@ -654,25 +654,28 @@
         const $ = id => document.getElementById(id);
         const AUTHOR_FACEBOOK_URL = "https://www.facebook.com/hw.khanh";
         const giftLinkButton = $("giftLinkBtn");
-        const giftImageModal = $("giftImageModal");
-        const closeGiftImageButton = $("closeGiftImage");
-        const closeGiftImage = () => {
-            giftImageModal.hidden = true;
-            giftImageModal.setAttribute("aria-hidden", "true");
+        const giftMediaModal = $("giftMediaModal");
+        const giftVideo = giftMediaModal.querySelector("video");
+        const closeGiftMediaButton = $("closeGiftMedia");
+        const closeGiftMedia = () => {
+            giftMediaModal.hidden = true;
+            giftMediaModal.setAttribute("aria-hidden", "true");
+            giftVideo.pause();
             giftLinkButton.focus();
         };
         giftLinkButton.addEventListener("click", () => {
-            giftImageModal.hidden = false;
-            giftImageModal.setAttribute("aria-hidden", "false");
-            closeGiftImageButton.focus();
+            giftMediaModal.hidden = false;
+            giftMediaModal.setAttribute("aria-hidden", "false");
+            closeGiftMediaButton.focus();
+            giftVideo.play().catch(error => console.error("Không thể phát video quà tặng:", error));
         });
-        closeGiftImageButton.addEventListener("click", closeGiftImage);
-        giftImageModal.addEventListener("click", event => {
-            if (event.target === giftImageModal) closeGiftImage();
+        closeGiftMediaButton.addEventListener("click", closeGiftMedia);
+        giftMediaModal.addEventListener("click", event => {
+            if (event.target === giftMediaModal) closeGiftMedia();
         });
         window.addEventListener("keydown", event => {
-            if (event.key === "Escape" && !giftImageModal.hidden) {
-                closeGiftImage();
+            if (event.key === "Escape" && !giftMediaModal.hidden) {
+                closeGiftMedia();
             }
         });
 
