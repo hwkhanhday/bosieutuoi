@@ -1677,26 +1677,43 @@
             }
         }
 
-        function drawGroundBush(x, y, scale, variant) {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.scale(scale, scale);
-            const width = variant ? 44 : 34;
-            ctx.fillStyle = "#285b2b";
-            ctx.fillRect(4, -8, width - 8, 12);
-            ctx.fillRect(0, -12, 12, 12);
-            ctx.fillRect(8, -20, 18, 20);
-            ctx.fillRect(22, -14, width - 22, 14);
-            if (variant) ctx.fillRect(30, -20, 10, 20);
-            ctx.fillStyle = variant ? "#3d963d" : "#459e3c";
-            ctx.fillRect(4, -12, 8, 8);
-            ctx.fillRect(12, -16, 12, 12);
-            ctx.fillRect(26, -10, 8, 8);
-            if (variant) ctx.fillRect(32, -16, 6, 8);
-            ctx.fillStyle = "#79cb50";
-            ctx.fillRect(8, -16, 8, 4);
-            ctx.fillRect(24, -12, 4, 4);
-            ctx.restore();
+        function drawGroundBuilding(x, groundY, width, height, variant) {
+            const style = BUILDING_STYLES[variant % BUILDING_STYLES.length];
+            const top = groundY - height;
+            ctx.fillStyle = style.shadow;
+            ctx.fillRect(x, top, width, height);
+            ctx.fillStyle = style.wall;
+            ctx.fillRect(x + 3, top, width - 5, height);
+            ctx.fillStyle = "rgba(255,255,255,.18)";
+            ctx.fillRect(x + 5, top + 2, 2, height - 2);
+
+            if (variant === 0) {
+                ctx.fillStyle = style.roof;
+                ctx.fillRect(x - 2, top, width + 3, 5);
+                ctx.fillRect(x + width / 2 - 2, top - 8, 4, 8);
+            } else if (variant === 1) {
+                ctx.fillStyle = style.roof;
+                ctx.fillRect(x + 4, top - 7, width - 7, 8);
+                ctx.fillRect(x + 9, top - 12, width - 16, 6);
+            } else {
+                ctx.fillStyle = style.roof;
+                ctx.fillRect(x + 2, top - 4, width - 4, 6);
+                ctx.fillRect(x + width - 8, top - 11, 3, 10);
+            }
+
+            const columns = Math.max(2, Math.floor((width - 10) / 7));
+            const rows = Math.floor((height - 8) / 10);
+            for (let row = 0; row < rows; row++) {
+                for (let column = 0; column < columns; column++) {
+                    const windowX = x + 7 + column * 7;
+                    const windowY = top + 8 + row * 10;
+                    const isLit = settings.theme === "night" && (row * 7 + column * 11 + variant * 3) % 5 === 0;
+                    ctx.fillStyle = isLit ? style.lit : style.glass;
+                    ctx.fillRect(windowX, windowY, 4, 6);
+                    ctx.fillStyle = "rgba(25,35,48,.4)";
+                    ctx.fillRect(windowX, windowY + 5, 4, 1);
+                }
+            }
         }
 
         const BUILDING_STYLES = [
@@ -1897,18 +1914,22 @@
             ctx.fillStyle = "#4ca03a";
             for (let c = 0; c < W / 16 + 2; c++) ctx.fillRect(c * 16 - px, gy + 14, 8, 6);
             ctx.fillStyle = "#2f6b2a"; ctx.fillRect(0, gy, W, 3);
-            const bushSpacing = 88;
-            const bushOffset = scrollX % bushSpacing;
-            const firstBush = Math.floor(scrollX / bushSpacing);
-            const bushScales = [1.25, 2.25, 1.05, 1.75];
-            for (let i = -1; i < W / bushSpacing + 2; i++) {
-                const bushIndex = firstBush + i;
-                const variant = Math.abs(bushIndex) % 2;
-                const bushX = i * bushSpacing - bushOffset + 18;
-                drawGroundBush(bushX, gy + 12, bushScales[Math.abs(bushIndex) % bushScales.length], variant);
-                if (Math.abs(bushIndex) % 3 === 1) {
-                    drawGroundBush(bushX + 42, gy + 12, 0.9, 1 - variant);
-                }
+            const buildingSpacing = 48;
+            const buildingOffset = scrollX % buildingSpacing;
+            const firstBuilding = Math.floor(scrollX / buildingSpacing);
+            const buildingWidths = [40, 48, 34, 52, 38, 46, 32, 50];
+            const buildingHeights = [62, 88, 50, 74, 102, 57, 82, 68];
+            for (let i = -2; i < W / buildingSpacing + 3; i++) {
+                const buildingIndex = firstBuilding + i;
+                const index = Math.abs(buildingIndex) % buildingWidths.length;
+                const buildingX = i * buildingSpacing - buildingOffset;
+                drawGroundBuilding(
+                    buildingX,
+                    gy + 14,
+                    buildingWidths[index],
+                    buildingHeights[index],
+                    Math.abs(buildingIndex) % BUILDING_STYLES.length
+                );
             }
 
             if (settings.theme === "night") {
