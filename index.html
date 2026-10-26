@@ -674,9 +674,9 @@
 
     <script>
         /* ============================================================
-           CẤU HÌNH BẢNG XẾP HẠNG CHUNG (Firebase Firestore)
-           - Để trống 2 dòng dưới: BXH chỉ lưu trên máy này (chơi thử).
-           - Điền vào: BXH chung cho cả nhóm bạn bè.
+            CẤU HÌNH BẢNG XẾP HẠNG CHUNG (Firebase Firestore)
+            - Để trống 2 dòng dưới: BXH chỉ lưu trên máy này (chơi thử).
+            - Điền vào: BXH chung cho cả nhóm bạn bè.
            ============================================================ */
         const FIREBASE_PROJECT_ID = "khanhnekk";
         const FIREBASE_API_KEY = "AIzaSyALWXuYBHHnCRIV-bTl4oUCeRuoS4YE4nY";
@@ -685,11 +685,12 @@
         const CUSTOM_DEATH_SOUND = "catmemesound.mp3"; // e.g. "khi-chet.mp3"
         const CUSTOM_EXTRA_DEATH_SOUND = "chet.mp3";
         const HIGH_SCORE_DEATH_SOUND = new Audio("siren head.mp3");
-        const BONUS_IMAGE_PATH = "chotiep.jpg";
-        const PLANE_IMAGE_PATH = "vietjet.png";
+        const PLANE_IMAGE_PATH = "maybay.png";
         const TOWER_IMAGE_PATH = "thapdoi.png";
+        const CLOUD_IMAGE_PATH = "mayyy.png";
+        const CITY_IMAGE_PATH = "city.png";
+        const FIRE_VIDEO_PATH = "fire.mp4";
         const BACKGROUND_MUSIC_PATH = "ffob1.mp3";
-        const CLOUD_IMAGE_PATH = "chotiep.jpg";
         const AVATAR_SIZE = 96; // Kích thước ảnh đại diện (px) khi lưu lên BXH
         const BACKGROUND_MUSIC_BASE_VOLUME = 0.35;
         const MASTER_VOLUME = 0.1;
@@ -1038,14 +1039,18 @@
 
         const THEMES = {
             day: {
-                bands: ["#438fd0", "#4d9bd8", "#5aa9df", "#69b7e5", "#78c3e9", "#8bceed", "#a1d9f0", "#b7e2f2", "#cceaf4"],
+                skyTop: "#3886c5", skyBottom: "#d4eff7",
                 mountFar: "#83b9cf", mountNear: "#659bb5",
-                cloud: "rgba(255,255,255,.8)", cloudTint: "rgba(255,255,255,.12)", stars: false
+                cloudTop: "#ffffff", cloudBottom: "#c4ddec",
+                cloudHighlight: "rgba(255,255,255,.58)", cloudShade: "rgba(92,130,164,.25)",
+                cloudTint: "rgba(54,91,126,.18)", stars: false
             },
             night: {
-                bands: ["#070b1f", "#0b1330", "#101a40", "#16224f", "#1c2c5c", "#24386b", "#2d4478", "#365285", "#3f5f90"],
+                skyTop: "#070b1f", skyBottom: "#3f5f90",
                 mountFar: "#1e2c58", mountNear: "#16214a",
-                cloud: "rgba(170,185,230,.45)", cloudTint: "rgba(10,20,50,.35)", stars: true
+                cloudTop: "#c5d6fa", cloudBottom: "#657ba8",
+                cloudHighlight: "rgba(229,239,255,.34)", cloudShade: "rgba(17,29,67,.42)",
+                cloudTint: "rgba(5,12,34,.4)", stars: true
             }
         };
         const STARS = Array.from({ length: 45 }, (_, i) => ({
@@ -1063,14 +1068,16 @@
         let birdImage = null, birdImageData = "";
         let planeImage = null;
         let towerImage = null;
-        let cloudImage = null;
-        let bonusImage = null;
-        let cloudsX = [40, 190, 300];
+        let fireVideo = null;
+        let fireFrameCanvas = null;
+        let fireVideoPlayRequested = false;
+        let cityStrips = [];
+        let cloudSprites = [];
+        let cloudsX = [-35, 40, 120, 210, 295, 370, 445];
         let gameAudio = null;
         let bonusPopups = [];
         let explosionParticles = [];
         let planeExploded = false;
-        let groundImagePasses = [];
         const backgroundMusic = new Audio(BACKGROUND_MUSIC_PATH);
         backgroundMusic.loop = true;
         backgroundMusic.volume = BACKGROUND_MUSIC_BASE_VOLUME * MASTER_VOLUME;
@@ -1088,18 +1095,6 @@
             backgroundMusic.pause();
         }
 
-        if (CLOUD_IMAGE_PATH) {
-            const image = new Image();
-            image.onload = () => { cloudImage = image; };
-            image.onerror = () => console.error(`Không thể tải ảnh mây: ${CLOUD_IMAGE_PATH}`);
-            image.src = CLOUD_IMAGE_PATH;
-        }
-        if (BONUS_IMAGE_PATH) {
-            const image = new Image();
-            image.onload = () => { bonusImage = image; };
-            image.onerror = () => console.error(`Không thể tải ảnh thưởng: ${BONUS_IMAGE_PATH}`);
-            image.src = BONUS_IMAGE_PATH;
-        }
         const planeAsset = new Image();
         planeAsset.onload = () => { planeImage = planeAsset; };
         planeAsset.onerror = () => console.error(`Không thể tải ảnh máy bay: ${PLANE_IMAGE_PATH}; dùng hình máy bay vẽ sẵn.`);
@@ -1108,6 +1103,38 @@
         towerAsset.onload = () => { towerImage = towerAsset; };
         towerAsset.onerror = () => console.error(`Không thể tải ảnh tòa tháp: ${TOWER_IMAGE_PATH}; dùng hình tòa nhà vẽ sẵn.`);
         towerAsset.src = TOWER_IMAGE_PATH;
+        fireVideo = document.createElement("video");
+        fireVideo.src = FIRE_VIDEO_PATH;
+        fireVideo.loop = true;
+        fireVideo.muted = true;
+        fireVideo.playsInline = true;
+        fireVideo.preload = "auto";
+        fireVideo.addEventListener("error", () => console.error(`Không thể tải hiệu ứng lửa: ${FIRE_VIDEO_PATH}`));
+        const cloudAsset = new Image();
+        cloudAsset.onload = () => { cloudSprites = [cloudAsset]; };
+        cloudAsset.onerror = () => console.error(`Không thể tải ảnh mây: ${CLOUD_IMAGE_PATH}; dùng mây vẽ sẵn.`);
+        cloudAsset.src = CLOUD_IMAGE_PATH;
+        const cityAsset = new Image();
+        cityAsset.onload = () => {
+            cityStrips = [[260, 700], [1440, 291]].map(([sourceX, sourceWidth]) => {
+                const strip = document.createElement("canvas");
+                strip.width = sourceWidth;
+                strip.height = cityAsset.naturalHeight;
+                const stripContext = strip.getContext("2d", { willReadFrequently: true });
+                stripContext.drawImage(cityAsset, sourceX, 0, sourceWidth, cityAsset.naturalHeight, 0, 0, sourceWidth, cityAsset.naturalHeight);
+                const pixels = stripContext.getImageData(0, 0, strip.width, strip.height);
+                for (let i = 0; i < pixels.data.length; i += 4) {
+                    const red = pixels.data[i];
+                    const green = pixels.data[i + 1];
+                    const blue = pixels.data[i + 2];
+                    if (blue > red * 1.25 && green > red * 1.2 && green > 105) pixels.data[i + 3] = 0;
+                }
+                stripContext.putImageData(pixels, 0, 0);
+                return strip;
+            });
+        };
+        cityAsset.onerror = () => console.error(`Không thể tải ảnh thành phố: ${CITY_IMAGE_PATH}; dùng nhà vẽ sẵn.`);
+        cityAsset.src = CITY_IMAGE_PATH;
 
         function playCustomSound(sound, name) {
             if (!sound) return false;
@@ -1279,87 +1306,31 @@
             planeExploded = true;
         }
 
-        function drawTowerScorch(x, y) {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.fillStyle = "rgba(20,18,18,.78)";
-            ctx.beginPath();
-            ctx.ellipse(0, 0, 11, 15, -0.25, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "rgba(5,5,5,.72)";
-            ctx.fillRect(-7, -9, 8, 12);
-            ctx.fillRect(1, -5, 6, 13);
-            ctx.strokeStyle = "rgba(20,15,15,.9)";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(-2, -9);
-            ctx.lineTo(-5, -15);
-            ctx.moveTo(3, 5);
-            ctx.lineTo(7, 11);
-            ctx.stroke();
-            ctx.restore();
-        }
-
         function drawTowerFire(x, y) {
-            const time = performance.now() / 90;
+            if (!fireVideo || fireVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+            if (!fireVideoPlayRequested) {
+                fireVideoPlayRequested = true;
+                fireVideo.play().catch(error => console.error("Không thể phát video hiệu ứng lửa", error));
+            }
+            if (!fireFrameCanvas) fireFrameCanvas = document.createElement("canvas");
+            const frameWidth = 128;
+            const frameHeight = Math.max(1, Math.round(frameWidth * fireVideo.videoHeight / fireVideo.videoWidth));
+            if (fireFrameCanvas.width !== frameWidth || fireFrameCanvas.height !== frameHeight) {
+                fireFrameCanvas.width = frameWidth;
+                fireFrameCanvas.height = frameHeight;
+            }
+            const frameContext = fireFrameCanvas.getContext("2d", { willReadFrequently: true });
+            frameContext.drawImage(fireVideo, 0, 0, frameWidth, frameHeight);
+            const frame = frameContext.getImageData(0, 0, frameWidth, frameHeight);
+            for (let i = 0; i < frame.data.length; i += 4) {
+                const brightness = Math.max(frame.data[i], frame.data[i + 1], frame.data[i + 2]);
+                frame.data[i + 3] *= Math.max(0, Math.min(1, (brightness - 12) / 55));
+            }
+            frameContext.putImageData(frame, 0, 0);
+            const width = 150;
+            const height = width * frameHeight / frameWidth;
             ctx.save();
-            ctx.translate(x, y);
-
-            const pulse = (Math.sin(time) + 1) / 2;
-            ctx.globalAlpha = 0.2 + pulse * 0.12;
-            ctx.fillStyle = "#ff6b18";
-            ctx.fillRect(-22, -24, 44, 30);
-            ctx.globalAlpha = 1;
-
-            for (let flame = 0; flame < 3; flame++) {
-                const sway = Math.sin(time * 1.4 + flame * 2.1) * 3;
-                const height = 17 + ((Math.sin(time + flame * 2) + 1) * 5);
-                const baseX = -12 + flame * 11;
-                ctx.fillStyle = flame === 1 ? "#ff4b24" : "#e93620";
-                ctx.beginPath();
-                ctx.moveTo(baseX - 7, 8);
-                ctx.lineTo(baseX - 8, -1);
-                ctx.lineTo(baseX - 3 + sway, -height * 0.55);
-                ctx.lineTo(baseX - 1 + sway, -height);
-                ctx.lineTo(baseX + 3, -height * 0.52);
-                ctx.lineTo(baseX + 6 + sway, -height * 0.78);
-                ctx.lineTo(baseX + 8, 8);
-                ctx.closePath();
-                ctx.fill();
-
-                ctx.fillStyle = "#ff9d24";
-                ctx.beginPath();
-                ctx.moveTo(baseX - 4, 7);
-                ctx.lineTo(baseX - 3 - sway * 0.35, -height * 0.42);
-                ctx.lineTo(baseX + 1, -height * 0.68);
-                ctx.lineTo(baseX + 4 + sway * 0.3, -height * 0.28);
-                ctx.lineTo(baseX + 5, 7);
-                ctx.closePath();
-                ctx.fill();
-
-                ctx.fillStyle = "#ffe779";
-                ctx.fillRect(baseX - 1, -height * 0.28, 4, height * 0.38);
-            }
-
-            for (let i = 0; i < 4; i++) {
-                const rise = (time * (0.7 + i * 0.12) + i * 9) % 34;
-                const puffX = Math.sin(time * 0.45 + i * 1.8) * (5 + i * 2);
-                ctx.globalAlpha = 0.48 - i * 0.08;
-                ctx.fillStyle = i % 2 ? "#555461" : "#3d4052";
-                const size = 7 + i * 2;
-                ctx.fillRect(puffX, -22 - rise, size, size);
-                ctx.fillRect(puffX - size * 0.6, -18 - rise, size, size * 0.7);
-                ctx.fillRect(puffX + size * 0.5, -17 - rise, size * 0.65, size * 0.65);
-            }
-
-            ctx.globalAlpha = 1;
-            for (let i = 0; i < 5; i++) {
-                const phase = (time * (0.8 + i * 0.13) + i * 7) % 30;
-                const emberX = Math.sin(time * 0.8 + i * 2.7) * (8 + i * 2);
-                ctx.fillStyle = i % 2 ? "#ffe779" : "#ff6b25";
-                ctx.fillRect(emberX, -12 - phase, 2, 3);
-                ctx.fillRect(emberX + 3, -17 - phase, 2, 2);
-            }
+            ctx.drawImage(fireFrameCanvas, x - width / 2, y - height + 8, width, height);
             ctx.restore();
         }
 
@@ -1518,7 +1489,11 @@
             bonusPopups = [];
             explosionParticles = [];
             planeExploded = false;
-            groundImagePasses = [];
+            if (fireVideo) {
+                fireVideo.pause();
+                fireVideo.currentTime = 0;
+                fireVideoPlayRequested = false;
+            }
         }
         reset();
 
@@ -1572,7 +1547,10 @@
 
         function update(dt) {
             if (state !== "over") scrollX += SPEED * dt;
-            cloudsX = cloudsX.map(x => (x - 12 * dt < -70 ? W + 20 : x - 12 * dt));
+            cloudsX = cloudsX.map(x => {
+                const nextX = x - 12 * dt;
+                return nextX < -100 ? nextX + W + 180 : nextX;
+            });
             bonusPopups = bonusPopups.filter(item => {
                 item.age += dt;
                 return item.age < item.ttl;
@@ -1586,11 +1564,6 @@
                 particle.rotation += particle.spin * dt;
                 return particle.age < particle.ttl;
             });
-            groundImagePasses = groundImagePasses.filter(item => {
-                item.x -= item.speed * dt;
-                return item.x > -item.size;
-            });
-
             if (state === "menu" || state === "ready") {
                 bird.y = H / 2 - 40 + Math.sin(performance.now() / 200) * 8;
                 bird.flapT = Math.max(0, Math.sin(performance.now() / 120)) * 0.1;
@@ -1611,9 +1584,6 @@
                         p.passed = true;
                         score++;
                         playScoreSound();
-                        if (score === 10) {
-                            groundImagePasses.push({ x: W, size: 58, speed: 140 });
-                        }
                     }
                     const bx = bird.x, by = bird.y, r = 12;
                     const bottomY = p.top + GAP;
@@ -1636,71 +1606,90 @@
         }
 
         /* --------------------------- Vẽ --------------------------- */
-        function pixelDisc(cx, cy, r, color) {
-            ctx.fillStyle = color;
-            for (let dy = -r; dy < r; dy += 4) {
-                const hw = Math.round(Math.sqrt(r * r - (dy + 2) * (dy + 2)) / 4) * 4;
-                ctx.fillRect(cx - hw, cy + dy, hw * 2, 4);
-            }
-        }
-
         function drawMountains(offset, base, amp, seed, color) {
             const floor = H - GROUND;
             ctx.fillStyle = color;
-            for (let x = 0; x < W; x += 8) {
+            ctx.beginPath();
+            ctx.moveTo(0, floor);
+            for (let x = 0; x <= W; x += 4) {
                 const wx = x + offset;
-                const raw = base + Math.sin(wx * 0.011 + seed) * amp + Math.sin(wx * 0.027 + seed * 2) * amp * 0.4;
-                const h = Math.round(raw / 8) * 8;
-                ctx.fillRect(x, floor - h, 8, h);
+                const height = base + Math.sin(wx * 0.011 + seed) * amp + Math.sin(wx * 0.027 + seed * 2) * amp * 0.4;
+                ctx.lineTo(x, floor - height);
             }
+            ctx.lineTo(W, floor);
+            ctx.closePath();
+            ctx.fill();
         }
 
-        function pixCloud(x, y, color) {
-            ctx.fillStyle = color;
-            ctx.fillRect(x + 12, y, 28, 8);
-            ctx.fillRect(x, y + 8, 56, 8);
-            ctx.fillRect(x + 8, y + 16, 40, 4);
-        }
-
-        function drawCloud(x, y, theme) {
-            if (cloudImage && cloudImage.complete && cloudImage.naturalWidth) {
-                ctx.save();
-                ctx.globalCompositeOperation = "screen";
-                const scale = Math.min(72 / cloudImage.naturalWidth, 88 / cloudImage.naturalHeight);
-                const width = cloudImage.naturalWidth * scale;
-                const height = cloudImage.naturalHeight * scale;
-                ctx.drawImage(cloudImage, x + (56 - width) / 2, y - height / 2, width, height);
+        function drawCloud(x, y, theme, scale = 1, spriteIndex = 0) {
+            ctx.save();
+            const cloudSprite = cloudSprites[spriteIndex % cloudSprites.length];
+            if (cloudSprite) {
+                const width = 92 * scale;
+                const height = width * cloudSprite.height / cloudSprite.width;
+                ctx.globalAlpha = theme.stars ? 0.72 : 0.92;
+                ctx.shadowColor = theme.cloudTint;
+                ctx.shadowBlur = 10;
+                ctx.drawImage(cloudSprite, x, y, width, height);
                 ctx.restore();
-            } else {
-                pixCloud(Math.round(x / 4) * 4, Math.round(y / 4) * 4, theme.cloud);
+                return;
             }
-        }
-
-        function drawAtmosphericSmoke(offset) {
-            const repeatWidth = 340;
-            const shift = offset % repeatWidth;
-            for (let block = -1; block < W / repeatWidth + 2; block++) {
-                const x = block * repeatWidth - shift;
-                ctx.fillStyle = "rgba(38, 39, 61, .48)";
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            const cloudPath = () => {
                 ctx.beginPath();
-                ctx.ellipse(x + 105, 50, 118, 34, -0.08, 0, Math.PI * 2);
-                ctx.ellipse(x + 190, 38, 104, 32, 0.06, 0, Math.PI * 2);
-                ctx.ellipse(x + 260, 54, 112, 29, 0.12, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.moveTo(8, 31);
+                ctx.bezierCurveTo(-1, 30, -2, 19, 5, 15);
+                ctx.bezierCurveTo(8, 13, 12, 13, 15, 14);
+                ctx.bezierCurveTo(17, 4, 27, 0, 36, 3);
+                ctx.bezierCurveTo(43, -1, 54, 2, 57, 11);
+                ctx.bezierCurveTo(69, 8, 79, 15, 78, 24);
+                ctx.bezierCurveTo(78, 30, 73, 33, 66, 33);
+                ctx.closePath();
+            };
+            ctx.shadowColor = theme.cloudTint;
+            ctx.shadowBlur = 14;
+            ctx.shadowOffsetY = 5;
+            cloudPath();
+            ctx.fillStyle = theme.cloudBottom;
+            ctx.fill();
+            ctx.shadowColor = "transparent";
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetY = 0;
 
-                ctx.fillStyle = "rgba(53, 53, 79, .42)";
-                ctx.beginPath();
-                ctx.ellipse(x + 64, 77, 92, 27, -0.12, 0, Math.PI * 2);
-                ctx.ellipse(x + 148, 70, 116, 31, 0.04, 0, Math.PI * 2);
-                ctx.ellipse(x + 240, 78, 105, 24, 0.1, 0, Math.PI * 2);
-                ctx.fill();
+            cloudPath();
+            ctx.save();
+            ctx.clip();
+            const body = ctx.createLinearGradient(0, 0, 0, 34);
+            body.addColorStop(0, theme.cloudTop);
+            body.addColorStop(0.55, theme.cloudBottom);
+            body.addColorStop(1, theme.cloudShade);
+            ctx.fillStyle = body;
+            ctx.fillRect(0, 0, 80, 36);
 
-                ctx.fillStyle = "rgba(113, 119, 154, .16)";
-                ctx.beginPath();
-                ctx.ellipse(x + 102, 99, 102, 17, 0.04, 0, Math.PI * 2);
-                ctx.ellipse(x + 227, 96, 116, 18, -0.08, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            const crownGlow = ctx.createRadialGradient(34, 8, 1, 34, 8, 32);
+            crownGlow.addColorStop(0, theme.cloudHighlight);
+            crownGlow.addColorStop(1, "rgba(255,255,255,0)");
+            ctx.fillStyle = crownGlow;
+            ctx.fillRect(0, 0, 80, 34);
+
+            const underside = ctx.createLinearGradient(0, 21, 0, 35);
+            underside.addColorStop(0, "rgba(77,111,151,0)");
+            underside.addColorStop(1, theme.cloudShade);
+            ctx.fillStyle = underside;
+            ctx.fillRect(0, 18, 80, 18);
+
+            ctx.globalAlpha = 0.55;
+            ctx.strokeStyle = theme.cloudHighlight;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(20, 9);
+            ctx.bezierCurveTo(25, 3, 33, 2, 39, 5);
+            ctx.moveTo(44, 6);
+            ctx.bezierCurveTo(50, 4, 55, 7, 57, 12);
+            ctx.stroke();
+            ctx.restore();
+            ctx.restore();
         }
 
         function drawGroundBuilding(x, groundY, width, height, variant) {
@@ -1739,6 +1728,20 @@
                     ctx.fillStyle = "rgba(25,35,48,.4)";
                     ctx.fillRect(windowX, windowY + 5, 4, 1);
                 }
+            }
+
+        }
+
+        function drawCitySkyline(groundY, offset) {
+            const scale = 0.22;
+            const [mainStrip, sideStrip] = cityStrips;
+            const mainWidth = mainStrip.width * scale;
+            const sideWidth = sideStrip.width * scale;
+            const tileWidth = mainWidth + sideWidth;
+            const shift = offset % tileWidth;
+            for (let x = -tileWidth - shift; x < W + tileWidth; x += tileWidth) {
+                ctx.drawImage(mainStrip, x, groundY - mainStrip.height * scale, mainWidth, mainStrip.height * scale);
+                ctx.drawImage(sideStrip, x + mainWidth, groundY - sideStrip.height * scale, sideWidth, sideStrip.height * scale);
             }
         }
 
@@ -1809,12 +1812,10 @@
             drawSkyscraper(p.x, bottomY, H - bottomY, false, p.style);
             if (p.topScorch) {
                 const x = p.x + p.topScorch.x, y = -4 + p.topScorch.y;
-                drawTowerScorch(x, y);
                 if (state === "over") drawTowerFire(x, y);
             }
             if (p.bottomScorch) {
                 const x = p.x + p.bottomScorch.x, y = bottomY + p.bottomScorch.y;
-                drawTowerScorch(x, y);
                 if (state === "over") drawTowerFire(x, y);
             }
         }
@@ -1892,9 +1893,11 @@
             const theme = THEMES[settings.theme] || THEMES.day;
             const skyH = H - GROUND;
 
-            // trời: các dải màu
-            const bandH = Math.ceil(skyH / theme.bands.length);
-            theme.bands.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(0, i * bandH, W, bandH + 1); });
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, skyH);
+            skyGradient.addColorStop(0, theme.skyTop);
+            skyGradient.addColorStop(1, theme.skyBottom);
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, W, skyH);
 
             // sao (ban đêm)
             if (theme.stars) {
@@ -1902,29 +1905,45 @@
                 ctx.fillStyle = "#fff";
                 for (const s of STARS) {
                     ctx.globalAlpha = 0.45 + 0.55 * Math.sin(t + s.p);
-                    ctx.fillRect(s.x, s.y, s.r, s.r);
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.r / 2, 0, Math.PI * 2);
+                    ctx.fill();
                 }
                 ctx.globalAlpha = 1;
             }
 
             // mặt trời / mặt trăng
             if (theme.stars) {
-                pixelDisc(272, 140, 34, "#eef0e6");
-                ctx.fillStyle = "#d3d6c8";
-                ctx.fillRect(260, 128, 8, 8); ctx.fillRect(282, 150, 8, 8); ctx.fillRect(264, 154, 4, 4);
+                ctx.fillStyle = "#eef0e6";
+                ctx.beginPath();
+                ctx.arc(272, 140, 30, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "rgba(170,180,190,.25)";
+                ctx.beginPath();
+                ctx.arc(261, 131, 7, 0, Math.PI * 2);
+                ctx.arc(284, 151, 5, 0, Math.PI * 2);
+                ctx.fill();
             } else {
-                pixelDisc(272, 150, 48, "#ffe3a8");
-                pixelDisc(272, 150, 36, "#fff4cf");
+                const sunGlow = ctx.createRadialGradient(272, 150, 15, 272, 150, 58);
+                sunGlow.addColorStop(0, "rgba(255,244,207,.5)");
+                sunGlow.addColorStop(1, "rgba(255,227,168,0)");
+                ctx.fillStyle = sunGlow;
+                ctx.beginPath();
+                ctx.arc(272, 150, 58, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#fff4cf";
+                ctx.beginPath();
+                ctx.arc(272, 150, 36, 0, Math.PI * 2);
+                ctx.fill();
             }
-
-            drawAtmosphericSmoke(scrollX * 0.08);
 
             // núi xa, núi gần (cuộn chậm)
             drawMountains(scrollX * 0.12, 120, 34, 1.3, theme.mountFar);
             drawMountains(scrollX * 0.3, 64, 26, 4.1, theme.mountNear);
 
-            // mây
-            drawCloud(cloudsX[0], 110, theme); drawCloud(cloudsX[1], 200, theme); drawCloud(cloudsX[2], 70, theme);
+            const cloudRows = [100, 168, 236, 304, 72, 204, 340];
+            const cloudScales = [1.45, 1.05, 1.25, 1.55, 0.9, 1.35, 1.1];
+            cloudsX.forEach((x, i) => drawCloud(x, cloudRows[i], theme, cloudScales[i], i));
 
             pipes.forEach(drawPipe);
 
@@ -1942,34 +1961,31 @@
             ctx.fillStyle = "#4ca03a";
             for (let c = 0; c < W / 16 + 2; c++) ctx.fillRect(c * 16 - px, gy + 14, 8, 6);
             ctx.fillStyle = "#2f6b2a"; ctx.fillRect(0, gy, W, 3);
-            const buildingSpacing = 48;
-            const buildingOffset = scrollX % buildingSpacing;
-            const firstBuilding = Math.floor(scrollX / buildingSpacing);
-            const buildingWidths = [40, 48, 34, 52, 38, 46, 32, 50];
-            const buildingHeights = [62, 88, 50, 74, 102, 57, 82, 68];
-            for (let i = -2; i < W / buildingSpacing + 3; i++) {
-                const buildingIndex = firstBuilding + i;
-                const index = Math.abs(buildingIndex) % buildingWidths.length;
-                const buildingX = i * buildingSpacing - buildingOffset;
-                drawGroundBuilding(
-                    buildingX,
-                    gy + 14,
-                    buildingWidths[index],
-                    buildingHeights[index],
-                    Math.abs(buildingIndex) % BUILDING_STYLES.length
-                );
+            if (cityStrips.length === 2) {
+                drawCitySkyline(gy + 14, scrollX);
+            } else {
+                const buildingSpacing = 48;
+                const buildingOffset = scrollX % buildingSpacing;
+                const firstBuilding = Math.floor(scrollX / buildingSpacing);
+                const buildingWidths = [40, 48, 34, 52, 38, 46, 32, 50];
+                const buildingHeights = [62, 88, 50, 74, 102, 57, 82, 68];
+                for (let i = -2; i < W / buildingSpacing + 3; i++) {
+                    const buildingIndex = firstBuilding + i;
+                    const index = Math.abs(buildingIndex) % buildingWidths.length;
+                    const buildingX = i * buildingSpacing - buildingOffset;
+                    drawGroundBuilding(
+                        buildingX,
+                        gy + 14,
+                        buildingWidths[index],
+                        buildingHeights[index],
+                        Math.abs(buildingIndex) % BUILDING_STYLES.length
+                    );
+                }
             }
 
             if (settings.theme === "night") {
                 ctx.fillStyle = "rgba(10,20,50,.4)";
                 ctx.fillRect(0, gy, W, GROUND);
-            }
-
-            if (bonusImage && bonusImage.complete && bonusImage.naturalWidth) {
-                for (const item of groundImagePasses) {
-                    const y = gy + (GROUND - item.size) / 2;
-                    ctx.drawImage(bonusImage, item.x, y, item.size, item.size);
-                }
             }
 
             if (!planeExploded) {
@@ -2037,7 +2053,7 @@
                 ctx.restore();
             }
 
-            if (state === "play" || state === "over") {
+            if (state === "play") {
                 ctx.font = "72px VT323, monospace"; ctx.textAlign = "center";
                 ctx.lineJoin = "round";
                 ctx.lineWidth = 8; ctx.strokeStyle = "#1b2a49"; ctx.strokeText(score, W / 2, 100);
@@ -2065,16 +2081,12 @@
                 ctx.save();
                 ctx.globalAlpha = alpha;
                 const size = item.size * (1 + (1 - alpha) * 0.2);
-                if (bonusImage && bonusImage.complete && bonusImage.naturalWidth) {
-                    ctx.drawImage(bonusImage, item.x - size / 2, item.y - size / 2, size, size);
-                } else {
-                    ctx.fillStyle = "rgba(255,255,255,.85)";
-                    ctx.fillRect(item.x - size / 2, item.y - size / 2, size, size);
-                    ctx.fillStyle = "#1b2a49";
-                    ctx.font = "bold 24px VT323, monospace";
-                    ctx.textAlign = "center";
-                    ctx.fillText("+", item.x, item.y + 8);
-                }
+                ctx.fillStyle = "rgba(255,255,255,.85)";
+                ctx.fillRect(item.x - size / 2, item.y - size / 2, size, size);
+                ctx.fillStyle = "#1b2a49";
+                ctx.font = "bold 24px VT323, monospace";
+                ctx.textAlign = "center";
+                ctx.fillText("+", item.x, item.y + 8);
                 ctx.restore();
             }
             if (state === "menu" || state === "ready") {
