@@ -509,6 +509,18 @@
             text-align: left;
         }
 
+        .setSec.sourceSec {
+            width: 100%;
+            max-width: 280px;
+            padding: 8px 10px;
+        }
+
+        .sourceContent {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
         .setSec h3 {
             margin: 0 0 8px;
             font-size: 20px;
@@ -529,7 +541,7 @@
         }
 
         #socialLinks {
-            margin-top: 6px;
+            margin: 0;
         }
 
         #socialLinks a {
@@ -537,13 +549,6 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-        }
-
-        #socialLinks img {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            object-fit: cover;
         }
 
         .small {
@@ -656,10 +661,11 @@
                         </div>
                     </div>
 
-                    <div class="setSec">
-                        <h3>Nguồn</h3>
-                        <div style="font-size:16px;opacity:.8">DEV</div>
-                        <div id="socialLinks"></div>
+                    <div class="setSec sourceSec">
+                        <div class="sourceContent">
+                            <div style="font-size:16px;opacity:.8">DEV</div>
+                            <div id="socialLinks"></div>
+                        </div>
                     </div>
 
                     <button id="closeSettings" type="button">Xong</button>
@@ -760,11 +766,7 @@
             link.href = url.href;
             link.target = "_blank";
             link.rel = "noopener noreferrer";
-            const image = document.createElement("img");
-            image.src = "lhk.png";
-            image.alt = "";
-            image.alt = "Facebook tác giả";
-            link.appendChild(image);
+            link.textContent = "khanhskysiudzaii";
             container.appendChild(link);
         }
         renderAuthorFacebook();
@@ -1016,7 +1018,7 @@
 
         /* --------------------------- Game --------------------------- */
         const cv = $("c"), ctx = cv.getContext("2d");
-        const W = 360, H = 640, GROUND = 90;
+        const W = 360, H = 640, GROUND = 50; // Chỉnh số này để thay đổi độ cao mặt đất.
         const FALL_GRAVITY = 1100, FLAP = -310, SPEED = 140, GAP = 125, PIPE_W = 54, SPAWN = 1.55;
         const customSounds = {
             flap: CUSTOM_FLAP_SOUND ? new Audio(CUSTOM_FLAP_SOUND) : null,
@@ -1062,6 +1064,18 @@
 
         let state = "menu";            // menu | ready | play | over
         let bird, pipes, score, spawnT, deadT, playerName = "";
+        let stormActive = false;
+        let weatherTimer = 20 + Math.random() * 40;
+        let stormTimer = 0;
+        let stormDuration = 0;
+        let stormIntensity = 0;
+        let lightningTimer = 0;
+        let lightningFlash = 0;
+        const rainDrops = Array.from({ length: 48 }, () => ({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            length: 8 + Math.random() * 10
+        }));
         let pendingScore = null;
         let personalBestScore = 0;
         let scrollX = 0;
@@ -1547,6 +1561,41 @@
 
         function update(dt) {
             if (state !== "over") scrollX += SPEED * dt;
+            if (stormActive) {
+                stormTimer -= dt;
+                lightningTimer -= dt;
+                lightningFlash = Math.max(0, lightningFlash - dt);
+                stormIntensity = Math.min(1, (stormDuration - stormTimer) / 2, stormTimer / 2);
+                if (lightningTimer <= 0 && stormIntensity > 0.6) {
+                    lightningFlash = 0.16;
+                    lightningTimer = 3 + Math.random() * 5;
+                }
+                if (stormTimer <= 0) {
+                    stormActive = false;
+                    stormIntensity = 0;
+                    weatherTimer = 45 + Math.random() * 75;
+                    lightningFlash = 0;
+                }
+            } else {
+                weatherTimer -= dt;
+                if (weatherTimer <= 0) {
+                    stormActive = true;
+                    stormDuration = 20;
+                    stormTimer = stormDuration;
+                    lightningTimer = 3 + Math.random() * 4;
+                }
+            }
+            if (stormActive) {
+                for (const drop of rainDrops) {
+                    drop.x -= 35 * dt;
+                    drop.y += 300 * dt;
+                    if (drop.y > H) {
+                        drop.y = -drop.length;
+                        drop.x = Math.random() * W;
+                    }
+                    if (drop.x < -5) drop.x += W + 5;
+                }
+            }
             cloudsX = cloudsX.map(x => {
                 const nextX = x - 12 * dt;
                 return nextX < -100 ? nextX + W + 180 : nextX;
@@ -1587,12 +1636,14 @@
                     }
                     const bx = bird.x, by = bird.y, r = 12;
                     const bottomY = p.top + GAP;
-                    if (bx + r > p.x && bx - r < p.x + PIPE_W && (by - r < p.top || by + r > p.top + GAP)) {
+                    const hitTop = by - r < p.top;
+                    const hitBottom = by + r > bottomY;
+                    if (bx + r > p.x && bx - r < p.x + PIPE_W && (hitTop || hitBottom)) {
                         const impactX = Math.max(p.x, Math.min(p.x + PIPE_W, bx));
-                        if (by < p.top) {
-                            p.topScorch = { x: impactX - p.x, y: Math.max(0, Math.min(p.top + 4, by + 4)) };
+                        if (hitTop) {
+                            p.topScorch = { x: impactX - p.x, y: p.top + 4 };
                         } else {
-                            p.bottomScorch = { x: impactX - p.x, y: Math.max(0, Math.min(H - bottomY, by - bottomY)) };
+                            p.bottomScorch = { x: impactX - p.x, y: 0 };
                         }
                         die(bx, by, p.style);
                         break;
@@ -1863,19 +1914,6 @@
             ctx.save();
             ctx.translate(bird.x, bird.y);
             ctx.rotate(bird.rot);
-            if (birdImage) {
-                ctx.beginPath();
-                ctx.arc(0, 0, 17, 0, Math.PI * 2);
-                ctx.clip();
-                ctx.drawImage(birdImage, -17, -17, 34, 34);
-                ctx.restore();
-                ctx.beginPath();
-                ctx.arc(bird.x, bird.y, 17, 0, Math.PI * 2);
-                ctx.strokeStyle = "#1b2a49";
-                ctx.lineWidth = 3;
-                ctx.stroke();
-                return;
-            }
             if (planeImage && planeImage.complete && planeImage.naturalWidth) {
                 const scale = Math.min(56 / planeImage.naturalWidth, 42 / planeImage.naturalHeight);
                 const width = planeImage.naturalWidth * scale;
@@ -1944,6 +1982,15 @@
             const cloudRows = [100, 168, 236, 304, 72, 204, 340];
             const cloudScales = [1.45, 1.05, 1.25, 1.55, 0.9, 1.35, 1.1];
             cloudsX.forEach((x, i) => drawCloud(x, cloudRows[i], theme, cloudScales[i], i));
+
+            if (stormActive) {
+                ctx.fillStyle = `rgba(24, 38, 58, ${0.32 * stormIntensity})`;
+                ctx.fillRect(0, 0, W, skyH);
+                if (lightningFlash > 0) {
+                    ctx.fillStyle = `rgba(230, 240, 255, ${lightningFlash * 2.5 * stormIntensity})`;
+                    ctx.fillRect(0, 0, W, skyH);
+                }
+            }
 
             pipes.forEach(drawPipe);
 
@@ -2050,6 +2097,19 @@
                         ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size);
                     }
                 }
+                ctx.restore();
+            }
+
+            if (stormActive) {
+                ctx.save();
+                ctx.strokeStyle = `rgba(220, 235, 255, ${0.58 * stormIntensity})`;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                for (const drop of rainDrops) {
+                    ctx.moveTo(drop.x, drop.y);
+                    ctx.lineTo(drop.x - 4, drop.y + drop.length);
+                }
+                ctx.stroke();
                 ctx.restore();
             }
 
